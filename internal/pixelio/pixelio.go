@@ -4,9 +4,12 @@ package pixelio
 // Ideally I'd call this io, but that's already taken!
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -25,6 +28,10 @@ func EnumerateDirContents(dir string) (files []InputFile, err error) {
 	}
 
 	err = filepath.Walk(absDir, func(path string, info os.FileInfo, err error) error {
+		if info == nil {
+			return errors.New("File path does not exist: " + path)
+		}
+
 		if info.IsDir() {
 			return nil
 		}
@@ -75,4 +82,55 @@ FILE:
 		}
 	}
 	return
+}
+
+// TODO: Load from config file
+func baseOutputDir() (baseOutputDir string) {
+	return "output"
+}
+
+// GetFileOutputDir returns the path of the output dir for a given file
+func GetFileOutputDir(f InputFile) (outputDir string) {
+	outputDir = filepath.Join(baseOutputDir(), f.Subdir)
+	return
+}
+
+// GetFileOutputPath returns the path of the output version of a given file, included modifying the file extension
+func GetFileOutputPath(f InputFile, size int, ext string) (outputPath string) {
+	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(size) + "." + ext
+
+	outputPath = filepath.Join(GetFileOutputDir(f), outputFilename)
+
+	return
+}
+
+// EnsureOutputDirExists ensures that the configured output dir, or subdirectory thereof, exists
+func EnsureOutputDirExists(subdir string) error {
+	// Top level output dir
+	// TODO: Configure in config
+	dirPermissions := os.FileMode(0755)
+
+	outputDir := filepath.Join(baseOutputDir(), subdir)
+	f, err := os.Stat(outputDir)
+	// If dir doesn't exist, create it
+	if os.IsNotExist(err) {
+		if err := os.Mkdir(outputDir, dirPermissions); err != nil {
+			return err
+		}
+	} else {
+		// If file with outputDir's name exists, ensure it is really a directory
+		if !f.IsDir() {
+			fmt.Println("Not a directory", outputDir)
+			// err := MediaprocessorError{s: "Output subdirectory exists as a file"}
+			// fmt.Println("Err:", err.s)
+			return errors.New("Output subdirectory exists as a file")
+		}
+		if f.Mode() != dirPermissions {
+			if err := os.Chmod(outputDir, dirPermissions); err != nil {
+				return errors.New("Unable to update permissions on output dir")
+			}
+		}
+	}
+
+	return nil
 }

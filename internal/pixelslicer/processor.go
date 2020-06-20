@@ -21,11 +21,13 @@ func ProcessOneShot(dir string) {
 	if err != nil {
 		log.Fatal("Cannot enumerate supplied directory", dir)
 	}
+
+	// This should filter into each supported/enabled type and run the appropriate processor
 	filteredFiles := pixelio.FilterFileType(files, "image")
 	fmt.Printf("Processing %d files, %d images\n", len(files), len(filteredFiles))
 
 	for i, file := range filteredFiles {
-		fmt.Printf("Processing file '%s' (%d/%d)\n", file, i+1, len(filteredFiles))
+		fmt.Printf("Processing file '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles))
 		err := mediaprocessor.ProcessImage(file)
 		if err != nil {
 			log.Fatal("Error processing file", file)

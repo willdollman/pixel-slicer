@@ -1,19 +1,22 @@
 package mediaprocessor
 
 import (
-	"errors"
 	"fmt"
 	"image"
 	"log"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"image/jpeg"
 
 	"github.com/disintegration/imaging"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
 )
+
+// ImageOutputConfig defines an output image configuration
+type ImageOutputConfig struct {
+	width   int
+	quality int
+}
 
 type ImageProcessor interface {
 	ResizeImage(inputFile string, outputDir string, width int, quality int, format string) (fileName string, err error)
@@ -25,56 +28,62 @@ type VideoProcessor interface {
 
 // ProcessImage processes a single image...
 func ProcessImage(inputFile pixelio.InputFile) (err error) {
-	fmt.Println("Going to resize", inputFile.Filename)
-
 	// Read file in
-
-	// Apparently os.File is an io.Reader ?
+	// os.File conforms to io.Reader, which we can call Decode on
 	fh, err := os.Open(inputFile.Path)
+	defer fh.Close()
 	if err != nil {
 		log.Fatal("Could not read file")
 	}
 
 	srcImage, _, err := image.Decode(fh)
 	if err != nil {
-		log.Fatal("Error decoding image", inputFile)
+		log.Fatal("Error decoding image: ", inputFile.Path)
 	}
 
-	// Resize image
-	// TODO: Maintain aspect ratio; select best resizing algorithm
-	dstImage128 := imaging.Resize(srcImage, 128, 128, imaging.Lanczos)
+	// TODO: Move to config file
+	imageOutputConfigurations := []ImageOutputConfig{
+		{100, 80},
+		{500, 80},
+		{1000, 80},
+		{2000, 80},
+	}
 
-	// Write file out
-	// We can have an output folder, but we also need to know what subfolder the image was in
-	// Prepare by building filename and checking parent dir exists
-	outputDir := "output"
-	fileOutputDir := filepath.Join(outputDir, inputFile.Subdir)
-	f, err := os.Stat(fileOutputDir)
-	// If subdir doesn't exist, create it
-	if os.IsNotExist(err) {
-		fmt.Println("Creating dir", fileOutputDir)
-		if err := os.Mkdir(fileOutputDir, 0755); err != nil {
-			return err
+	for _, config := range imageOutputConfigurations {
+		// Resize image
+		resizedImage := resizeImage(srcImage, config.width)
+
+		// Write file out
+		if err := pixelio.EnsureOutputDirExists(inputFile.Subdir); err != nil {
+			log.Fatal("Unable to prepare output dir:", err)
 		}
-	} else {
-		// If file with subdirectory name exists, ensure it is a directory
-		if !f.IsDir() {
-			fmt.Println("Not a directory", fileOutputDir)
-			// err := MediaprocessorError{s: "Output subdirectory exists as a file"}
-			// fmt.Println("Err:", err.s)
-			return errors.New("Output subdirectory exists as a file")
+		outputFilepath := pixelio.GetFileOutputPath(inputFile, config.width, "jpg")
+		fmt.Println("File output path is", outputFilepath)
+		outfh, err := os.Create(outputFilepath)
+		defer outfh.Close()
+		if err != nil {
+			log.Fatal(err)
 		}
+		jpeg.Encode(outfh, resizedImage, &jpeg.Options{Quality: config.quality})
 	}
 
-	outputFilename := strings.TrimSuffix(inputFile.Filename, filepath.Ext(inputFile.Filename)) + ".jpg"
+	return
+}
 
-	outputFilepath := filepath.Join(fileOutputDir, outputFilename) // TODO: need to handle the file extension
-	outfh, err := os.Create(outputFilepath)
-	if err != nil {
-		log.Fatal(err)
-	}
+func openImage() {
 
-	jpeg.Encode(outfh, dstImage128, nil)
+}
+
+// imaging library typically returns image.NRGBA, so let's roll with that for now
+func resizeImage(srcImage image.Image, resizeWidth int) (resizedImage *image.NRGBA) {
+	width := srcImage.Bounds().Max.X
+	height := srcImage.Bounds().Max.Y
+
+	resizeHeight := int(float64(resizeWidth) * (float64(height) / float64(width)))
+	// fmt.Printf("Resizing %d x %d -> %d x %d\n", width, height, resizeWidth, resizeHeight)
+
+	// TODO: select best resizing algorithm. Lanczos sounds like a good starting point.
+	resizedImage = imaging.Resize(srcImage, resizeWidth, resizeHeight, imaging.Lanczos)
 
 	return
 }
