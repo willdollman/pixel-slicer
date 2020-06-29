@@ -3,6 +3,7 @@ package pixelslicer
 import (
 	"fmt"
 	"log"
+	"runtime"
 
 	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
@@ -23,14 +24,36 @@ func ProcessOneShot(conf config.PixelSlicerConfig) {
 	filteredFiles := pixelio.FilterFileType(files, "image")
 	fmt.Printf("Processing %d files, %d images\n", len(files), len(filteredFiles))
 
+	numWorkers := runtime.NumCPU() / 2
+	fmt.Println("Got", numWorkers, "cores")
+	jobs := make(chan mediaprocessor.ImageJob, len(filteredFiles))
+	results := make(chan bool, len(filteredFiles))
+
+	for w := 1; w <= numWorkers; w++ {
+		go mediaprocessor.WorkerProcessImage(jobs, results)
+	}
+
+	log.Println("Will queue", len(filteredFiles), "jobs on", numWorkers, "workers")
+
 	for i, file := range filteredFiles {
 		fmt.Printf("Processing file '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles))
-		err := mediaprocessor.ProcessImage(file)
+		// Classic image processing!
+		// err := mediaprocessor.ProcessImage(conf, file)
+
+		// Multithreaded image processing
+		job := mediaprocessor.ImageJob{Config: conf, InputFile: file}
+		jobs <- job
+
 		if err != nil {
 			log.Fatal("Error processing file", file)
 			// Unsure why this needs to be fatal - we segfault for some reason otherwise...
 		}
 
 		// log.Fatal("Finishing after one image")
+	}
+
+	for i, _ := range filteredFiles {
+		<-results
+		fmt.Println("Finished processing job", i)
 	}
 }

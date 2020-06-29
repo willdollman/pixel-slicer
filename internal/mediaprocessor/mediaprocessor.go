@@ -27,6 +27,24 @@ type VideoProcessor interface {
 	ResizeVideo(inputFile string, outputDir string, width int, quality int, format string) (fileName string, err error)
 }
 
+type ImageJob struct {
+	Config    config.PixelSlicerConfig
+	InputFile pixelio.InputFile
+}
+
+// This is fine for a one-shot thing where you have a fixed number of jobs, but how
+// should it work with an unknown # jobs (and unknown delay between jobs)?
+func WorkerProcessImage(jobs <-chan ImageJob, results chan<- bool) {
+	for j := range jobs {
+		success := true
+		if err := ProcessImage(j.Config, j.InputFile); err != nil {
+			success = false
+		}
+		results <- success
+	}
+}
+
+// We want to wrap ProcessImage in a worker.
 // ProcessImage processes a single image...
 func ProcessImage(conf config.PixelSlicerConfig, inputFile pixelio.InputFile) (err error) {
 	// Read file in
