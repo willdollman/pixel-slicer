@@ -10,6 +10,7 @@ import (
 
 	"github.com/disintegration/imaging"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
+	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
 // ImageOutputConfig defines an output image configuration
@@ -27,7 +28,7 @@ type VideoProcessor interface {
 }
 
 // ProcessImage processes a single image...
-func ProcessImage(inputFile pixelio.InputFile) (err error) {
+func ProcessImage(conf config.PixelSlicerConfig, inputFile pixelio.InputFile) (err error) {
 	// Read file in
 	// os.File conforms to io.Reader, which we can call Decode on
 	fh, err := os.Open(inputFile.Path)
@@ -41,30 +42,22 @@ func ProcessImage(inputFile pixelio.InputFile) (err error) {
 		log.Fatal("Error decoding image: ", inputFile.Path)
 	}
 
-	// TODO: Move to config file
-	imageOutputConfigurations := []ImageOutputConfig{
-		{100, 80},
-		{500, 80},
-		{1000, 80},
-		{2000, 80},
-	}
-
-	for _, config := range imageOutputConfigurations {
+	for _, imageConfig := range conf.ImageConfigurations {
 		// Resize image
-		resizedImage := resizeImage(srcImage, config.width)
+		resizedImage := resizeImage(srcImage, imageConfig.MaxWidth)
 
 		// Write file out
 		if err := pixelio.EnsureOutputDirExists(inputFile.Subdir); err != nil {
 			log.Fatal("Unable to prepare output dir:", err)
 		}
-		outputFilepath := pixelio.GetFileOutputPath(inputFile, config.width, "jpg")
+		outputFilepath := pixelio.GetFileOutputPath(inputFile, imageConfig.MaxWidth, "jpg")
 		fmt.Println("File output path is", outputFilepath)
 		outfh, err := os.Create(outputFilepath)
 		defer outfh.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
-		jpeg.Encode(outfh, resizedImage, &jpeg.Options{Quality: config.quality})
+		jpeg.Encode(outfh, resizedImage, &jpeg.Options{Quality: imageConfig.Quality})
 	}
 
 	return

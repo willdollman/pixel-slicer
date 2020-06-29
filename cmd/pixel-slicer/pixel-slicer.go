@@ -7,6 +7,7 @@ import (
 
 	"github.com/urfave/cli"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer"
+	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
 func main() {
@@ -38,7 +39,20 @@ func main() {
 				log.Fatal("No directory supplied to process")
 			}
 
-			pixelslicer.ProcessOneShot(c.String("dir"))
+			// TODO: Load from config file with Viper(?), if no values are passed
+
+			conf := config.PixelSlicerConfig{
+				InputDir:  c.String("dir"),
+				OutputDir: c.String("outputdir"),
+				ImageConfigurations: []config.ImageConfiguration{
+					{100, 80},
+					{500, 80},
+					{1000, 80},
+					{2000, 80},
+				},
+			}
+
+			pixelslicer.ProcessOneShot(conf)
 
 			return nil
 		},

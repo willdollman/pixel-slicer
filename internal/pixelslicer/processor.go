@@ -6,20 +6,17 @@ import (
 
 	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
+	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
-
-func main() {
-	fmt.Println("Hi")
-}
 
 // ProcessOneShot processes a directory of files in a one-shot fashion,
 // not worrying about new files being added
-func ProcessOneShot(dir string) {
-	fmt.Println("Processing directory", dir)
+func ProcessOneShot(conf config.PixelSlicerConfig) {
+	fmt.Println("Processing directory", conf.InputDir)
 
-	files, err := pixelio.EnumerateDirContents(dir)
+	files, err := pixelio.EnumerateDirContents(conf.InputDir)
 	if err != nil {
-		log.Fatal("Cannot enumerate supplied directory", dir)
+		log.Fatal("Cannot enumerate supplied directory", conf.InputDir)
 	}
 
 	// This should filter into each supported/enabled type and run the appropriate processor
