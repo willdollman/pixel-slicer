@@ -12,7 +12,7 @@ import (
 
 // ProcessOneShot processes a directory of files in a one-shot fashion,
 // not worrying about new files being added
-func ProcessOneShot(conf config.PixelSlicerConfig) {
+func ProcessOneShot(conf config.Config) {
 	fmt.Println("Processing directory", conf.InputDir)
 
 	files, err := pixelio.EnumerateDirContents(conf.InputDir)
@@ -25,6 +25,7 @@ func ProcessOneShot(conf config.PixelSlicerConfig) {
 	fmt.Printf("Processing %d files, %d images\n", len(files), len(filteredFiles))
 
 	numWorkers := runtime.NumCPU() / 2
+	numWorkers = 1 // TODO: Move to config/CLI switch
 	fmt.Println("Got", numWorkers, "cores")
 	jobs := make(chan mediaprocessor.ImageJob, len(filteredFiles))
 	results := make(chan bool, len(filteredFiles))
