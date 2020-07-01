@@ -114,7 +114,7 @@ func EnsureOutputDirExists(subdir string) error {
 	f, err := os.Stat(outputDir)
 	// If dir doesn't exist, create it
 	if os.IsNotExist(err) {
-		if err := os.Mkdir(outputDir, dirPermissions); err != nil {
+		if err := os.MkdirAll(outputDir, dirPermissions); err != nil {
 			return err
 		}
 	} else {
