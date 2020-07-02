@@ -20,18 +20,23 @@ func ProcessOneShot(conf config.Config) {
 		log.Fatal("Cannot enumerate supplied directory", conf.InputDir)
 	}
 
-	// This should filter into each supported/enabled type and run the appropriate processor
-	filteredFiles := pixelio.FilterFileType(files, "image")
-	fmt.Printf("Processing %d files, %d images\n", len(files), len(filteredFiles))
+	// Filter out valid file types
+	filteredFiles := pixelio.FilterValidFiles(files)
+	// Only used for stats - deletable
+	mediaFiles := make(map[string][]pixelio.InputFile)
+	for mediaType, _ := range pixelio.TypeExtension() {
+		mediaFiles[mediaType] = pixelio.FilterFileType(files, mediaType)
+	}
+	fmt.Printf("Processing %d files, %d images, %d videos\n", len(files), len(mediaFiles["image"]), len(mediaFiles["video"]))
 
 	numWorkers := runtime.NumCPU() / 2
 	numWorkers = 1 // TODO: Move to config/CLI switch
 	fmt.Println("Got", numWorkers, "cores")
-	jobs := make(chan mediaprocessor.ImageJob, len(filteredFiles))
+	jobs := make(chan mediaprocessor.MediaJob, len(filteredFiles))
 	results := make(chan bool, len(filteredFiles))
 
 	for w := 1; w <= numWorkers; w++ {
-		go mediaprocessor.WorkerProcessImage(jobs, results)
+		go mediaprocessor.WorkerProcessMedia(jobs, results)
 	}
 
 	log.Println("Will queue", len(filteredFiles), "jobs on", numWorkers, "workers")
@@ -42,7 +47,7 @@ func ProcessOneShot(conf config.Config) {
 		// err := mediaprocessor.ProcessImage(conf, file)
 
 		// Multithreaded image processing
-		job := mediaprocessor.ImageJob{Config: conf, InputFile: file}
+		job := mediaprocessor.MediaJob{Config: conf, InputFile: file}
 		jobs <- job
 
 		if err != nil {

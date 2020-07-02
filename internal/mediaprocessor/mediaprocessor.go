@@ -14,6 +14,7 @@ import (
 	"github.com/nickalie/go-webpbin"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
+	"github.com/xfrr/goffmpeg/transcoder"
 )
 
 // ImageOutputConfig defines an output image configuration
@@ -30,25 +31,61 @@ type VideoProcessor interface {
 	ResizeVideo(inputFile string, outputDir string, width int, quality int, format string) (fileName string, err error)
 }
 
-type ImageJob struct {
+type MediaJob struct {
 	Config    config.Config
 	InputFile pixelio.InputFile
 }
 
+// WorkerProcessMedia is a worker in a worker pool. It reads media jobs from the queue, and reports success/failure.
 // This is fine for a one-shot thing where you have a fixed number of jobs, but how
 // should it work with an unknown # jobs (and unknown delay between jobs)?
-func WorkerProcessImage(jobs <-chan ImageJob, results chan<- bool) {
+// Also doesn't allow us to pass errors back up the caller.
+func WorkerProcessMedia(jobs <-chan MediaJob, results chan<- bool) {
 	for j := range jobs {
+		mediaType := pixelio.GetMediaType(j.InputFile)
 		success := true
-		if err := ProcessImage(j.Config, j.InputFile); err != nil {
+
+		switch mediaType {
+		case "image":
+			if err := ProcessImage(j.Config, j.InputFile); err != nil {
+				fmt.Println("Error processing image:", err)
+				success = false
+			}
+		case "video":
+			if err := ProcessVideo(j.Config, j.InputFile); err != nil {
+				fmt.Println("Error processing video:", err)
+				success = false
+			}
+		default:
 			success = false
 		}
 		results <- success
 	}
 }
 
-// We want to wrap ProcessImage in a worker.
-// ProcessImage processes a single image...
+// ProcessVideo processes a single video
+func ProcessVideo(conf config.Config, inputFile pixelio.InputFile) (err error) {
+	fmt.Println("Transcoding video, this may take a while...")
+	t := new(transcoder.Transcoder)
+
+	for _, videoConfig := range conf.VideoConfigurations {
+		outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig.MaxWidth, string(videoConfig.FileType))
+
+		if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
+			log.Printf("Error initialising video transcoder:", err)
+			return
+		}
+
+		done := t.Run(false)
+		err = <-done
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+// ProcessImage processes a single image
 func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (err error) {
 	// Read file in
 	// os.File conforms to io.Reader, which we can call Decode on

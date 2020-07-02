@@ -6,9 +6,16 @@ type Config struct {
 	InputDir            string
 	OutputDir           string
 	ImageConfigurations []ImageConfiguration
+	VideoConfigurations []VideoConfiguration
 }
 
 type ImageConfiguration struct {
+	MaxWidth int
+	Quality  int
+	FileType FileOutputType
+}
+
+type VideoConfiguration struct {
 	MaxWidth int
 	Quality  int
 	FileType FileOutputType

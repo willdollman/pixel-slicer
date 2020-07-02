@@ -61,13 +61,48 @@ func EnumerateDirContents(dir string) (files []InputFile, err error) {
 	return
 }
 
+func TypeExtension() map[string][]string {
+	return map[string][]string{
+		"image": {".jpg", ".jpeg", ".png", ".tiff"},
+		"video": {".mp4", ".mov"},
+	}
+}
+
+// ExtensionType inverts TypeExtension to simplify file extension lookups
+func ExtensionType() map[string]string {
+	et := make(map[string]string)
+	for mediaType, extensions := range TypeExtension() {
+		for _, extension := range extensions {
+			et[extension] = mediaType
+		}
+	}
+	return et
+}
+
+// GetMediaType detects media type from a file's extension.
+// Returns the corresponding key from TypeExtension()
+func GetMediaType(file InputFile) (MediaType string) {
+	fileExt := strings.ToLower(filepath.Ext(file.Path))
+	mediaType, ok := ExtensionType()[fileExt]
+	if !ok {
+		fmt.Println("Invalid media type for", file.Path)
+		return
+	}
+	return mediaType
+}
+
+// FilterValidFiles returns all valid file types in the input
+func FilterValidFiles(files []InputFile) (filteredFiles []InputFile) {
+	for mediaType, _ := range TypeExtension() {
+		f := FilterFileType(files, mediaType)
+		filteredFiles = append(filteredFiles, f...)
+	}
+	return
+}
+
 // FilterFileType filters lists of files by type - image, video, etc
 func FilterFileType(files []InputFile, fileType string) (filteredFiles []InputFile) {
-	typeExtensions := make(map[string][]string)
-	typeExtensions["image"] = []string{".jpg", ".jpeg", ".png", ".tiff"}
-	typeExtensions["video"] = []string{".mp4", ".mov"}
-
-	validExtensions, ok := typeExtensions[fileType]
+	validExtensions, ok := TypeExtension()[fileType]
 	if ok == false {
 		log.Fatalf("No file type '%s'", fileType)
 	}
@@ -96,8 +131,11 @@ func GetFileOutputDir(f InputFile) (outputDir string) {
 }
 
 // GetFileOutputPath returns the path of the output version of a given file, included modifying the file extension
-func GetFileOutputPath(f InputFile, size int, ext string) (outputPath string) {
-	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(size) + "." + ext
+// TODO: Do I want to something that's compatible with a Image/VideoConfiguration instead of width and ext?
+func GetFileOutputPath(f InputFile, width int, ext string) (outputPath string) {
+	// Include image quality in filename for debugging
+	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(width) + "." + ext
+	// outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(config.MaxWidth) + "-" + strconv.Itoa(config.Quality) + "." + ext
 
 	outputPath = filepath.Join(GetFileOutputDir(f), outputFilename)
 

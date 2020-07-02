@@ -41,14 +41,21 @@ func main() {
 
 			// TODO: Load from config file with Viper(?), if no values are passed
 
-			conf := config.PixelSlicerConfig{
+			conf := config.Config{
 				InputDir:  c.String("dir"),
 				OutputDir: c.String("outputdir"),
 				ImageConfigurations: []config.ImageConfiguration{
-					{100, 80},
-					{500, 80},
-					{1000, 80},
-					{2000, 80},
+					// {100, 80, config.JPG},
+					{500, 80, config.JPG},
+					// {1000, 80, config.JPG},
+					{2000, 80, config.JPG},
+					// {2000, 85, config.WebP},
+					// {2000, 80, config.WebPBin},
+					// {2000, 85, config.WebPBin},
+				},
+				VideoConfigurations: []config.VideoConfiguration{
+					{400, 80, config.MP4},
+					{1200, 70, config.MP4},
 				},
 			}
 
