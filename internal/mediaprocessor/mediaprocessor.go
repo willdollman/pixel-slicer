@@ -69,12 +69,27 @@ func ProcessVideo(conf config.Config, inputFile pixelio.InputFile) (err error) {
 	t := new(transcoder.Transcoder)
 
 	for _, videoConfig := range conf.VideoConfigurations {
-		outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig.MaxWidth, string(videoConfig.FileType))
+		outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
 
 		if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
-			log.Printf("Error initialising video transcoder:", err)
+			log.Println("Error initialising video transcoder:", err)
 			return
 		}
+
+		// Configuration options to try:
+		// bitrate, resolution, presets (?), encode quality/speed
+
+		// TODO: Configure codecs via config
+		t.MediaFile().SetVideoCodec("libx264")
+		// t.MediaFile().SetAudioCodec("aac") // unsure if we want to explicitly say - will ffmpeg pick a good default otherwise?
+		//t.MediaFile().SetSkipAudio(true) // disable audio - we want to strip audio when generating input file instead
+
+		// TODO: either fix libary to let you specify one of the dimensions, or compute dimensions
+
+		t.MediaFile().SetResolution("1120x630") // Bug in the library which means you have to specify both dimensions
+		t.MediaFile().SetMovFlags("+faststart")
+		t.MediaFile().SetCRF(uint32(videoConfig.Quality))
+		t.MediaFile().SetPreset(videoConfig.Preset)
 
 		done := t.Run(false)
 		err = <-done
@@ -108,7 +123,7 @@ func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (err error) {
 		if err := pixelio.EnsureOutputDirExists(inputFile.Subdir); err != nil {
 			log.Fatal("Unable to prepare output dir:", err)
 		}
-		outputFilepath := pixelio.GetFileOutputPath(inputFile, imageConfig.MaxWidth, string(imageConfig.FileType))
+		outputFilepath := pixelio.GetFileOutputPath(inputFile, imageConfig)
 		fmt.Println("File output path is", outputFilepath)
 		outfh, err := os.Create(outputFilepath)
 		defer outfh.Close()

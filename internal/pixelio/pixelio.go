@@ -9,8 +9,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+
+	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
 type InputFile struct {
@@ -132,9 +133,9 @@ func GetFileOutputDir(f InputFile) (outputDir string) {
 
 // GetFileOutputPath returns the path of the output version of a given file, included modifying the file extension
 // TODO: Do I want to something that's compatible with a Image/VideoConfiguration instead of width and ext?
-func GetFileOutputPath(f InputFile, width int, ext string) (outputPath string) {
+func GetFileOutputPath(f InputFile, mediaConfig config.MediaConfiguration) (outputPath string) {
 	// Include image quality in filename for debugging
-	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(width) + "." + ext
+	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + mediaConfig.OutputFileName(false)
 	// outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(config.MaxWidth) + "-" + strconv.Itoa(config.Quality) + "." + ext
 
 	outputPath = filepath.Join(GetFileOutputDir(f), outputFilename)

@@ -23,7 +23,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:  "dir",
-				Value: "../pixel-slicer/example-simple",
+				Value: "/Users/will/Dropbox/code/pixel-slicer-go/example-simple",
 				Usage: "directory to process",
 			},
 			&cli.StringFlag{
@@ -45,17 +45,11 @@ func main() {
 				InputDir:  c.String("dir"),
 				OutputDir: c.String("outputdir"),
 				ImageConfigurations: []config.ImageConfiguration{
-					// {100, 80, config.JPG},
-					{500, 80, config.JPG},
-					// {1000, 80, config.JPG},
-					{2000, 80, config.JPG},
-					// {2000, 85, config.WebP},
-					// {2000, 80, config.WebPBin},
-					// {2000, 85, config.WebPBin},
+					{MaxWidth: 500, Quality: 80, FileType: config.JPG},
+					{MaxWidth: 2000, Quality: 80, FileType: config.JPG},
 				},
 				VideoConfigurations: []config.VideoConfiguration{
-					{400, 80, config.MP4},
-					{1200, 70, config.MP4},
+					{MaxWidth: 1200, Quality: 23, Preset: "medium", FileType: config.MP4},
 				},
 			}
 
