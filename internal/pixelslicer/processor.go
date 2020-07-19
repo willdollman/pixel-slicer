@@ -30,7 +30,7 @@ func ProcessOneShot(conf config.Config) {
 	fmt.Printf("Processing %d files, %d images, %d videos\n", len(files), len(mediaFiles["image"]), len(mediaFiles["video"]))
 
 	numWorkers := runtime.NumCPU() / 2
-	numWorkers = 1 // TODO: Move to config/CLI switch
+	// numWorkers = 1 // TODO: Move to config/CLI switch
 	fmt.Println("Got", numWorkers, "cores")
 	jobs := make(chan mediaprocessor.MediaJob, len(filteredFiles))
 	results := make(chan bool, len(filteredFiles))
@@ -44,16 +44,14 @@ func ProcessOneShot(conf config.Config) {
 	for i, file := range filteredFiles {
 		fmt.Printf("Processing file '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles))
 		// Classic image processing!
-		// err := mediaprocessor.ProcessImage(conf, file)
+		// if err := mediaprocessor.ProcessImage(conf, file); err != nil {
+		// 	log.Fatal("Error processing file", file)
+		// 	// Unsure why this needs to be fatal - we segfault for some reason otherwise...
+		// }
 
 		// Multithreaded image processing
 		job := mediaprocessor.MediaJob{Config: conf, InputFile: file}
 		jobs <- job
-
-		if err != nil {
-			log.Fatal("Error processing file", file)
-			// Unsure why this needs to be fatal - we segfault for some reason otherwise...
-		}
 
 		// log.Fatal("Finishing after one image")
 	}
