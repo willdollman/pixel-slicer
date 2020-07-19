@@ -7,6 +7,8 @@ import "fmt"
 type Config struct {
 	InputDir            string
 	OutputDir           string
+	MoveProcessed       bool
+	ProcessedDir        string
 	ImageConfigurations []ImageConfiguration
 	VideoConfigurations []VideoConfiguration
 }

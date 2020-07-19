@@ -145,30 +145,62 @@ func GetFileOutputPath(f InputFile, mediaConfig config.MediaConfiguration) (outp
 
 // EnsureOutputDirExists ensures that the configured output dir, or subdirectory thereof, exists
 func EnsureOutputDirExists(subdir string) error {
+	fullDir := filepath.Join(baseOutputDir(), subdir)
+
+	return EnsureDirExists(fullDir)
+}
+
+// EnsureDirExists ensures that given path exists, is a directory, and has the correct permissions
+func EnsureDirExists(dir string) error {
 	// Top level output dir
 	// TODO: Configure in config
 	dirPermissions := os.FileMode(0755)
 
-	outputDir := filepath.Join(baseOutputDir(), subdir)
-	f, err := os.Stat(outputDir)
+	f, err := os.Stat(dir)
 	// If dir doesn't exist, create it
 	if os.IsNotExist(err) {
-		if err := os.MkdirAll(outputDir, dirPermissions); err != nil {
+		if err := os.MkdirAll(dir, dirPermissions); err != nil {
 			return err
 		}
 	} else {
 		// If file with outputDir's name exists, ensure it is really a directory
 		if !f.IsDir() {
-			fmt.Println("Not a directory", outputDir)
+			fmt.Println("Not a directory", dir)
 			// err := MediaprocessorError{s: "Output subdirectory exists as a file"}
 			// fmt.Println("Err:", err.s)
 			return errors.New("Output subdirectory exists as a file")
 		}
 		if f.Mode() != dirPermissions {
-			if err := os.Chmod(outputDir, dirPermissions); err != nil {
+			if err := os.Chmod(dir, dirPermissions); err != nil {
 				return errors.New("Unable to update permissions on output dir")
 			}
 		}
+	}
+
+	return nil
+}
+
+// MoveOriginal moves the provided input file to the provided directory, preserving subdirectory structure
+func MoveOriginal(file InputFile, moveDir string) (err error) {
+	fullMoveDir := filepath.Join(moveDir, file.Subdir)
+	if err = EnsureDirExists(fullMoveDir); err != nil {
+		return err
+	}
+
+	movedFileName := filepath.Join(fullMoveDir, file.Filename)
+	fmt.Printf("Moving file %s to %s\n", file.Path, movedFileName)
+
+	// Remove target output file if it already exists
+	if _, err := os.Stat(movedFileName); err == nil {
+		fmt.Println("File already exists - removing")
+		if err = os.Remove(movedFileName); err != nil {
+			return err
+		}
+	}
+
+	// Move input file
+	if err = os.Rename(file.Path, movedFileName); err != nil {
+		return err
 	}
 
 	return nil

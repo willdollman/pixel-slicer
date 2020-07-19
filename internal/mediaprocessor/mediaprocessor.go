@@ -36,6 +36,8 @@ type MediaJob struct {
 	InputFile pixelio.InputFile
 }
 
+// TODO: Process errors properly
+
 // WorkerProcessMedia is a worker in a worker pool. It reads media jobs from the queue, and reports success/failure.
 // This is fine for a one-shot thing where you have a fixed number of jobs, but how
 // should it work with an unknown # jobs (and unknown delay between jobs)?
@@ -59,8 +61,27 @@ func WorkerProcessMedia(jobs <-chan MediaJob, results chan<- bool) {
 		default:
 			success = false
 		}
+
+		if err := jobPostProcess(j); err != nil {
+			fmt.Println("Error post-processing job:", err)
+			success = false
+		}
 		results <- success
 	}
+}
+
+// Perform any post-processing tasks after a job has been processed
+func jobPostProcess(job MediaJob) (err error) {
+	// TODO: Perhaps moving files to remote output location (SFTP, S3, ...) should occur here?
+	// May also not want to resized files to remain locally, so could remove them after moving
+
+	if job.Config.MoveProcessed {
+		// Move file to output dir
+		if err = pixelio.MoveOriginal(job.InputFile, job.Config.ProcessedDir); err != nil {
+			log.Println("Unable to move processed file to processed dir:", err)
+		}
+	}
+	return
 }
 
 // ProcessVideo processes a single video

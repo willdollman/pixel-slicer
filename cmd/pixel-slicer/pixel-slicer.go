@@ -31,6 +31,15 @@ func main() {
 				Value: "output",
 				Usage: "directory to output files to",
 			},
+			&cli.BoolFlag{
+				Name:  "move-processed",
+				Usage: "whether to move files to a separate directory once processed",
+			},
+			&cli.StringFlag{
+				Name:  "processeddir",
+				Value: "processed",
+				Usage: "directory to move files to once they have been processed",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			fmt.Println("Ready to go")
@@ -42,8 +51,10 @@ func main() {
 			// TODO: Load from config file with Viper(?), if no values are passed
 
 			conf := config.Config{
-				InputDir:  c.String("dir"),
-				OutputDir: c.String("outputdir"),
+				InputDir:      c.String("dir"),
+				OutputDir:     c.String("outputdir"),
+				MoveProcessed: c.Bool("move-processed"),
+				ProcessedDir:  c.String("processeddir"),
 				ImageConfigurations: []config.ImageConfiguration{
 					{MaxWidth: 500, Quality: 80, FileType: config.JPG},
 					{MaxWidth: 2000, Quality: 80, FileType: config.JPG},
