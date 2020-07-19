@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 // Manage configuration
 
@@ -11,6 +14,25 @@ type Config struct {
 	ProcessedDir        string
 	ImageConfigurations []ImageConfiguration
 	VideoConfigurations []VideoConfiguration
+}
+
+// ValidateConfig validates that a given config is valid
+func (c Config) ValidateConfig() (err error) {
+	// Check that input dir and processed dir are not the same directory
+	inputDirFull, err := filepath.Abs(c.InputDir)
+	if err != nil {
+		return err
+	}
+	processedDirFull, err := filepath.Abs(c.ProcessedDir)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s =? %s\n", inputDirFull, processedDirFull)
+	if inputDirFull == processedDirFull {
+		return fmt.Errorf("Input dir '%s' cannot match Processed dir '%s'", inputDirFull, processedDirFull)
+	}
+
+	return
 }
 
 type MediaConfiguration interface {

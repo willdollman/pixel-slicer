@@ -188,7 +188,7 @@ func MoveOriginal(file InputFile, moveDir string) (err error) {
 	}
 
 	movedFileName := filepath.Join(fullMoveDir, file.Filename)
-	fmt.Printf("Moving file %s to %s\n", file.Path, movedFileName)
+	fmt.Printf("Moving processed file %s to %s\n", file.Path, movedFileName)
 
 	// Remove target output file if it already exists
 	if _, err := os.Stat(movedFileName); err == nil {

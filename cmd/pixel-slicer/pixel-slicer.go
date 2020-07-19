@@ -63,6 +63,9 @@ func main() {
 					{MaxWidth: 1200, Quality: 23, Preset: "medium", FileType: config.MP4},
 				},
 			}
+			if err := conf.ValidateConfig(); err != nil {
+				log.Fatal("Config validation error:", err)
+			}
 
 			pixelslicer.ProcessOneShot(conf)
 
