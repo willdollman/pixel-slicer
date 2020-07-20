@@ -15,6 +15,7 @@ import (
 	"github.com/nickalie/go-webpbin"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
+	"github.com/willdollman/pixel-slicer/internal/s3"
 	"github.com/xfrr/goffmpeg/transcoder"
 )
 
@@ -68,7 +69,7 @@ func WorkerProcessMedia(jobs <-chan MediaJob, results chan<- bool) {
 			success = false
 		}
 
-		if err := jobPostProcess(j); err != nil {
+		if err := jobPostProcess(j, filenames); err != nil {
 			fmt.Println("Error post-processing job:", err)
 			success = false
 		}
@@ -77,9 +78,19 @@ func WorkerProcessMedia(jobs <-chan MediaJob, results chan<- bool) {
 }
 
 // Perform any post-processing tasks after a job has been processed
-func jobPostProcess(job MediaJob) (err error) {
+func jobPostProcess(job MediaJob, filenames []string) (err error) {
 	// TODO: Perhaps moving files to remote output location (SFTP, S3, ...) should occur here?
 	// May also not want to resized files to remain locally, so could remove them after moving
+
+	for _, filename := range filenames {
+		filekey := pixelio.StripFileOutputDir(filename)
+
+		// S3 upload
+		if job.Config.S3Enabled {
+			fmt.Printf("Uploading to S3: %s\n", filename)
+			s3.UploadFile(job.Config.S3Session, job.Config.S3Config.Bucket, filename, filekey)
+		}
+	}
 
 	if job.Config.MoveProcessed {
 		// Move file to output dir

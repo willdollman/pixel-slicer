@@ -131,6 +131,11 @@ func GetFileOutputDir(f InputFile) (outputDir string) {
 	return
 }
 
+// TODO: This doesn't seem like the best way to do things
+func StripFileOutputDir(filename string) (baseFilename string) {
+	return strings.TrimPrefix(filename, baseOutputDir()+"/")
+}
+
 // GetFileOutputPath returns the path of the output version of a given file, included modifying the file extension
 // TODO: Do I want to something that's compatible with a Image/VideoConfiguration instead of width and ext?
 func GetFileOutputPath(f InputFile, mediaConfig config.MediaConfiguration) (outputPath string) {

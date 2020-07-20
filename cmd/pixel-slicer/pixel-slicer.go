@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
+	"github.com/willdollman/pixel-slicer/internal/s3"
 )
 
 func main() {
@@ -40,6 +41,10 @@ func main() {
 				Value: "processed",
 				Usage: "directory to move files to once they have been processed",
 			},
+			&cli.BoolFlag{
+				Name:  "enable-s3",
+				Usage: "Enable S3 upload, if configured",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			fmt.Println("Ready to go")
@@ -55,6 +60,7 @@ func main() {
 				OutputDir:     c.String("outputdir"),
 				MoveProcessed: c.Bool("move-processed"),
 				ProcessedDir:  c.String("processeddir"),
+				S3Enabled:     c.Bool("enable-s3"),
 				ImageConfigurations: []config.ImageConfiguration{
 					{MaxWidth: 500, Quality: 80, FileType: config.JPG},
 					{MaxWidth: 2000, Quality: 80, FileType: config.JPG},
@@ -66,11 +72,18 @@ func main() {
 					//{MaxWidth: 1200, Quality: 23, Preset: "medium", FileType: config.MP4},
 					{MaxWidth: 500, Quality: 23, Preset: "ultrafast", FileType: config.MP4},
 				},
+				S3Config: config.S3Config{
+					EndpointURL: "https://s3.us-west-000.backblazeb2.com",
+					Region:      "us-east-1",
+					Bucket:      "photolog",
 				},
 			}
 			if err := conf.ValidateConfig(); err != nil {
 				log.Fatal("Config validation error:", err)
 			}
+			// TODO: This shouldn't be added to the config - it should be passed as part of a new struct
+			// which contains the config, S3Session, FTPSession, etc
+			conf.S3Session = s3.S3Session(conf.S3Config)
 
 			pixelslicer.ProcessOneShot(conf)
 

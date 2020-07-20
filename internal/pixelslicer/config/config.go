@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 // Manage configuration
@@ -12,6 +14,9 @@ type Config struct {
 	OutputDir           string
 	MoveProcessed       bool
 	ProcessedDir        string
+	S3Enabled           bool
+	S3Config            S3Config
+	S3Session           *s3.S3
 	ImageConfigurations []ImageConfiguration
 	VideoConfigurations []VideoConfiguration
 }
@@ -33,6 +38,14 @@ func (c Config) ValidateConfig() (err error) {
 	}
 
 	return
+}
+
+type S3Config struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	EndpointURL     string
+	Region          string
+	Bucket          string
 }
 
 type MediaConfiguration interface {
