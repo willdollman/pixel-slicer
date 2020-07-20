@@ -79,4 +79,27 @@ const (
 	WebM    FileOutputType = "webm"
 )
 
+// This *works*, but is a bit ugly. What if a new FileOutputType is added which doesn't have a type?
+
+// GetMediaType returns the MediaType of a given FileOutputType
+func (f FileOutputType) GetMediaType() MediaType {
+	switch f {
+	case JPG, WebP, WebPBin:
+		return Image
+	case MP4, WebM:
+		return Video
+	default:
+		return Unknown
+	}
+}
+
+// MediaType is the type of a piece of media - Image, Video, etc
+type MediaType string
+
+const (
+	Image   MediaType = "image"
+	Video   MediaType = "video"
+	Unknown MediaType = "unknown"
+)
+
 // Read from config file with Viper?

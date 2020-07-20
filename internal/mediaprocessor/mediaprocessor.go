@@ -11,6 +11,7 @@ import (
 
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
+	"github.com/hashicorp/go-multierror"
 	"github.com/nickalie/go-webpbin"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
@@ -47,14 +48,19 @@ func WorkerProcessMedia(jobs <-chan MediaJob, results chan<- bool) {
 		mediaType := pixelio.GetMediaType(j.InputFile)
 		success := true
 
+		var filenames []string
+		var err error
+
 		switch mediaType {
 		case "image":
-			if err := ProcessImage(j.Config, j.InputFile); err != nil {
+			filenames, err = ProcessImage(j.Config, j.InputFile)
+			if err != nil {
 				fmt.Println("Error processing image:", err)
 				success = false
 			}
 		case "video":
-			if err := ProcessVideo(j.Config, j.InputFile); err != nil {
+			filenames, err = ProcessVideo(j.Config, j.InputFile)
+			if err != nil {
 				fmt.Println("Error processing video:", err)
 				success = false
 			}
@@ -85,13 +91,59 @@ func jobPostProcess(job MediaJob) (err error) {
 }
 
 // ProcessVideo processes a single video
-func ProcessVideo(conf config.Config, inputFile pixelio.InputFile) (err error) {
+func ProcessVideo(conf config.Config, inputFile pixelio.InputFile) (filenames []string, allErrors error) {
 	fmt.Println("Transcoding video, this may take a while...")
-	t := new(transcoder.Transcoder)
+
+	if err := pixelio.EnsureOutputDirExists(inputFile.Subdir); err != nil {
+		log.Fatal("Unable to prepare output dir:", err)
+	}
 
 	for _, videoConfig := range conf.VideoConfigurations {
+		var err error
+		// Depending on the requested media type, either transcode video or generate a thumbnail
+		if videoConfig.FileType.GetMediaType() == config.Video {
+			err = videoTranscode(videoConfig, inputFile)
+		} else if videoConfig.FileType.GetMediaType() == config.Image {
+			err = videoThumbnail(videoConfig, inputFile)
+		} else {
+			err = fmt.Errorf("Configuration contains unknown media type: %s", videoConfig.FileType)
+		}
+
+		if err == nil {
+			outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
+			filenames = append(filenames, outputFilepath)
+		} else {
+			allErrors = multierror.Append(allErrors, err)
+		}
+	}
+	return
+}
+
+func videoThumbnail(videoConfig config.VideoConfiguration, inputFile pixelio.InputFile) (err error) {
+	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
+
+	t := new(transcoder.Transcoder)
+	if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
+		log.Println("Error initialising video transcoder:", err)
+		return
+	}
+
+	t.MediaFile().SetVframes(1)
+	t.MediaFile().SetSkipAudio(true)
+	t.MediaFile().SetSeekTime("0")
+	t.MediaFile().SetResolution("1120x630") // Bug in the library which means you have to specify both dimensions
+	t.MediaFile().SetQScale(uint32(videoConfig.Quality))
+
+	done := t.Run(false)
+	err = <-done
+
+	return
+}
+
+func videoTranscode(videoConfig config.VideoConfiguration, inputFile pixelio.InputFile) (err error) {
 		outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
 
+	t := new(transcoder.Transcoder)
 		if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
 			log.Println("Error initialising video transcoder:", err)
 			return
@@ -114,10 +166,6 @@ func ProcessVideo(conf config.Config, inputFile pixelio.InputFile) (err error) {
 
 		done := t.Run(false)
 		err = <-done
-		if err != nil {
-			return
-		}
-	}
 	return
 }
 
@@ -182,7 +230,10 @@ func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (err error) {
 
 		default:
 			fmt.Println("Error: unknown output format:", imageConfig.FileType)
+			continue
 		}
+
+		filenames = append(filenames, outputFilepath)
 	}
 
 	return

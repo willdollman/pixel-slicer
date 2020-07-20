@@ -59,8 +59,13 @@ func main() {
 					{MaxWidth: 500, Quality: 80, FileType: config.JPG},
 					{MaxWidth: 2000, Quality: 80, FileType: config.JPG},
 				},
+				// Thumbnail quality: 2-5 acceptable as an image; 10 borderline, 30 fine if blurred (though 20 probably better quality/size tradeoff)
 				VideoConfigurations: []config.VideoConfiguration{
-					{MaxWidth: 1200, Quality: 23, Preset: "medium", FileType: config.MP4},
+					{MaxWidth: 500, Quality: 2, FileType: config.JPG},  // Thumbnail
+					{MaxWidth: 500, Quality: 30, FileType: config.JPG}, // Thumbnail
+					//{MaxWidth: 1200, Quality: 23, Preset: "medium", FileType: config.MP4},
+					{MaxWidth: 500, Quality: 23, Preset: "ultrafast", FileType: config.MP4},
+				},
 				},
 			}
 			if err := conf.ValidateConfig(); err != nil {
