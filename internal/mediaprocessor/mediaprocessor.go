@@ -139,10 +139,17 @@ func videoThumbnail(videoConfig config.VideoConfiguration, inputFile pixelio.Inp
 		return
 	}
 
+	// Ensure maxWidth is even - required by some codecs
+	// TODO: Could do this in ValidateConfig() ?
+	maxWidth := videoConfig.MaxWidth
+	if maxWidth%2 != 0 {
+		maxWidth++
+	}
+
 	t.MediaFile().SetVframes(1)
 	t.MediaFile().SetSkipAudio(true)
-	t.MediaFile().SetSeekTime("0")
-	t.MediaFile().SetResolution("1120x630") // Bug in the library which means you have to specify both dimensions
+	t.MediaFile().SetSeekTime("0")                                     // Use first frame for thumbnail
+	t.MediaFile().SetVideoFilter(fmt.Sprintf("scale=%d:-2", maxWidth)) // -2 ensures height is a multiple of 2
 	t.MediaFile().SetQScale(uint32(videoConfig.Quality))
 
 	done := t.Run(false)
@@ -152,36 +159,36 @@ func videoThumbnail(videoConfig config.VideoConfiguration, inputFile pixelio.Inp
 }
 
 func videoTranscode(videoConfig config.VideoConfiguration, inputFile pixelio.InputFile) (err error) {
-		outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
+	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
+
+	// Ensure maxWidth is even - required by some codecs
+	maxWidth := videoConfig.MaxWidth
+	if maxWidth%2 != 0 {
+		maxWidth++
+	}
 
 	t := new(transcoder.Transcoder)
-		if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
-			log.Println("Error initialising video transcoder:", err)
-			return
-		}
+	if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
+		log.Println("Error initialising video transcoder:", err)
+		return
+	}
 
-		// Configuration options to try:
-		// bitrate, resolution, presets (?), encode quality/speed
+	t.MediaFile().SetVideoCodec("libx264")                             // TODO: Configure codecs via config
+	t.MediaFile().SetVideoFilter(fmt.Sprintf("scale=%d:-2", maxWidth)) // -2 ensures height is a multiple of 2
+	t.MediaFile().SetMovFlags("+faststart")
+	t.MediaFile().SetCRF(uint32(videoConfig.Quality))
+	t.MediaFile().SetPreset(videoConfig.Preset)
+	// t.MediaFile().SetAudioCodec("aac") // unsure if we want to explicitly say - will ffmpeg pick a good default otherwise?
+	//t.MediaFile().SetSkipAudio(true) // disable audio - we want to strip audio when generating input file instead
 
-		// TODO: Configure codecs via config
-		t.MediaFile().SetVideoCodec("libx264")
-		// t.MediaFile().SetAudioCodec("aac") // unsure if we want to explicitly say - will ffmpeg pick a good default otherwise?
-		//t.MediaFile().SetSkipAudio(true) // disable audio - we want to strip audio when generating input file instead
-
-		// TODO: either fix libary to let you specify one of the dimensions, or compute dimensions
-
-		t.MediaFile().SetResolution("1120x630") // Bug in the library which means you have to specify both dimensions
-		t.MediaFile().SetMovFlags("+faststart")
-		t.MediaFile().SetCRF(uint32(videoConfig.Quality))
-		t.MediaFile().SetPreset(videoConfig.Preset)
-
-		done := t.Run(false)
-		err = <-done
+	done := t.Run(false)
+	err = <-done
 	return
 }
 
 // ProcessImage processes a single image
-func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (err error) {
+func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (filenames []string, err error) {
+	// TODO: Do a better job of handling errors - returning early and using multierror to report all errors to the caller
 	// Read file in
 	// os.File conforms to io.Reader, which we can call Decode on
 	fh, err := os.Open(inputFile.Path)
