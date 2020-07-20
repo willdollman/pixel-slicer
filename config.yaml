@@ -1,0 +1,27 @@
+inputDir: example-datax
+outputDir: outputx
+processedDir: processedx
+moveProcessed: true
+S3Enabled: true
+
+S3:
+  Endpoint: https://s3.aws.com
+  Region: us-east-1
+  Bucket: pixelslicerx
+
+ImageConfigurations:
+  - MaxWidth: 500
+    Quality: 80
+    FileType: jpg
+  - MaxWidth: 2000
+    Quality: 80
+    FileType: jpg
+
+VideoConfigurations:
+  - MaxWidth: 500
+    Quality: 2
+    FileType: jpg
+  - MaxWidth: 500
+    Quality: 23
+    Preset: ultrafast
+    FileType: mp4

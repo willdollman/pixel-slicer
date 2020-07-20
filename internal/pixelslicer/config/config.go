@@ -15,7 +15,7 @@ type Config struct {
 	MoveProcessed       bool
 	ProcessedDir        string
 	S3Enabled           bool
-	S3Config            S3Config
+	S3Config            S3Config `mapstructure:"S3"`
 	S3Session           *s3.S3
 	ImageConfigurations []ImageConfiguration
 	VideoConfigurations []VideoConfiguration
@@ -37,13 +37,21 @@ func (c Config) ValidateConfig() (err error) {
 		return fmt.Errorf("Input dir '%s' cannot match Processed dir '%s'", inputDirFull, processedDirFull)
 	}
 
+	if c.InputDir == "" {
+		return fmt.Errorf("No input dir supplied")
+	}
+
+	if c.OutputDir == "" {
+		return fmt.Errorf("No output dir supplied")
+	}
+
 	return
 }
 
 type S3Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
-	EndpointURL     string
+	EndpointURL     string `mapstructure:"Endpoint"`
 	Region          string
 	Bucket          string
 }

@@ -14,6 +14,7 @@ require (
 	github.com/nickalie/go-webpbin v0.0.0-20170427122138-7e79cf5bb01e
 	github.com/nwaples/rardecode v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
+	github.com/spf13/viper v1.7.0
 	github.com/ulikunitz/xz v0.5.7 // indirect
 	github.com/urfave/cli v1.22.4
 	github.com/xfrr/goffmpeg v0.0.0-20200624145540-fb3f88b1924e
