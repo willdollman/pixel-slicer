@@ -14,6 +14,7 @@ type Config struct {
 	OutputDir           string
 	MoveProcessed       bool
 	ProcessedDir        string
+	Watch               bool
 	S3Enabled           bool
 	S3Config            S3Config `mapstructure:"S3"`
 	S3Session           *s3.S3

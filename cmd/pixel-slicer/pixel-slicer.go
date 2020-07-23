@@ -50,6 +50,11 @@ func main() {
 				Name:  "print-config",
 				Usage: "Print the current configuration and exit",
 			},
+			&cli.BoolFlag{
+				Name:  "watch",
+				Usage: "Watch the input directory for new files",
+			},
+			// TODO: Allow num workers to be passed as a parameter
 		},
 		Action: func(c *cli.Context) error {
 			fmt.Println("Ready to go")
@@ -67,6 +72,9 @@ func main() {
 			}
 			if moveProcessed := c.String("move-processed"); moveProcessed != "" {
 				viper.Set("MoveProcessed", moveProcessed)
+			}
+			if watch := c.Bool("watch"); watch {
+				viper.Set("Watch", watch)
 			}
 			if enableS3 := c.String("enable-s3"); enableS3 != "" {
 				viper.Set("EnableS3", enableS3)
@@ -102,7 +110,7 @@ func main() {
 			// which contains the config, S3Session, FTPSession, etc
 			conf.S3Session = s3.S3Session(conf.S3Config)
 
-			pixelslicer.ProcessOneShot(*conf)
+			pixelslicer.ProcessFiles(*conf)
 
 			return nil
 		},

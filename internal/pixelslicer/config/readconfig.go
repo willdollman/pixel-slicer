@@ -13,6 +13,7 @@ func GetConfig(configPath string) (*Config, error) {
 	viper.SetDefault("OutputDir", "output")
 	viper.SetDefault("ProcessedDir", "processed")
 	viper.SetDefault("MoveProcessed", false)
+	viper.SetDefault("Watch", false)
 	// Default S3 configurations
 	viper.SetDefault("S3Enabled", false)
 	viper.SetDefault("S3", map[string]string{"Endoint": "", "Region": "", "Bucket": "pixelslicer"})

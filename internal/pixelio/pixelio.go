@@ -20,6 +20,33 @@ type InputFile struct {
 	Subdir   string // Subdirectory relative to input directory
 }
 
+// InputFileFromFullPath creates an InputFile from the input directory and the full path of a file
+func InputFileFromFullPath(dir string, fullpath string) (inputFile InputFile, err error) {
+	fmt.Printf("Creating InputFile from %s and %s\n", dir, fullpath)
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return
+	}
+
+	// We have the full path to the inputDir and the file
+	// We want to strip the inputDir off the file, and then split the result?
+
+	// Get the path of the file relative to the inputDir
+	relPath, err := filepath.Rel(absDir, fullpath)
+	if err != nil {
+		return
+	}
+	subdir, filename := filepath.Split(relPath)
+
+	inputFile = InputFile{
+		Path:     fullpath,
+		Filename: filename,
+		Subdir:   subdir,
+	}
+
+	return
+}
+
 // EnumerateDirContents enumerates the contents of a directory, returning
 // an array of inputFiles
 func EnumerateDirContents(dir string) (files []InputFile, err error) {

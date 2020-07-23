@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/pkg/errors"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
@@ -27,13 +28,12 @@ func S3Session(c config.S3Config) *s3.S3 {
 }
 
 // UploadFile uploads the file filename to the supplied bucket with the key filekey using the provided S3 session.
-func UploadFile(session *s3.S3, bucket string, filename string, filekey string) (err error) {
+func UploadFile(session *s3.S3, bucket string, filename string, filekey string) error {
 	key := aws.String(filekey)
 
 	f, err := os.Open(filename)
 	if err != nil {
-		fmt.Printf("Unable to open file %s for upload: %s", filename, err)
-		return
+		return errors.Wrapf(err, "Unable to open file '%s' for upload", filename)
 	}
 
 	_, err = session.PutObject(&s3.PutObjectInput{
@@ -42,11 +42,10 @@ func UploadFile(session *s3.S3, bucket string, filename string, filekey string) 
 		Key:    key,
 	})
 	if err != nil {
-		fmt.Printf("Failed to upload data to %s/%s, %s\n", bucket, key, err.Error())
-		return
+		return errors.Wrapf(err, "Failed to upload data to %s/%s", bucket, key)
 	}
 
-	return
+	return nil
 }
 
 func ListBucket(session *s3.S3, bucket string) (err error) {

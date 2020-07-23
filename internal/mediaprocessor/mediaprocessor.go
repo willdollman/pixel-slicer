@@ -8,11 +8,13 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
 	"github.com/hashicorp/go-multierror"
 	"github.com/nickalie/go-webpbin"
+	"github.com/pkg/errors"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 	"github.com/willdollman/pixel-slicer/internal/s3"
@@ -38,49 +40,58 @@ type MediaJob struct {
 	InputFile pixelio.InputFile
 }
 
-// TODO: Process errors properly
-
 // WorkerProcessMedia is a worker in a worker pool. It reads media jobs from the queue, and reports success/failure.
 // This is fine for a one-shot thing where you have a fixed number of jobs, but how
 // should it work with an unknown # jobs (and unknown delay between jobs)?
 // Also doesn't allow us to pass errors back up the caller.
-func WorkerProcessMedia(jobs <-chan MediaJob, results chan<- bool) {
+func WorkerProcessMedia(jobs <-chan MediaJob, errc chan<- error, completion chan<- bool) {
 	for j := range jobs {
 		mediaType := pixelio.GetMediaType(j.InputFile)
-		success := true
 
 		var filenames []string
 		var err error
+		startTime := time.Now()
+
+		// TODO: Here, or in the ProcessX methods, we should check the file still exists
 
 		switch mediaType {
 		case "image":
 			filenames, err = ProcessImage(j.Config, j.InputFile)
 			if err != nil {
-				fmt.Println("Error processing image:", err)
-				success = false
+				errc <- errors.Wrap(err, "Error processing image") // TODO: not sure this wrap adds much!
+				continue
 			}
 		case "video":
 			filenames, err = ProcessVideo(j.Config, j.InputFile)
 			if err != nil {
-				fmt.Println("Error processing video:", err)
-				success = false
+				errc <- errors.Wrap(err, "Error processing video")
+				continue
 			}
 		default:
-			success = false
+			errc <- errors.Wrapf(err, "Unable to process media, unknown media type '%s'", mediaType)
+			continue
 		}
+		fmt.Printf("Encoding '%s' took %.2fs\n", j.InputFile.Filename, time.Now().Sub(startTime).Seconds())
 
+		postProcessStart := time.Now()
 		if err := jobPostProcess(j, filenames); err != nil {
-			fmt.Println("Error post-processing job:", err)
-			success = false
+			errc <- errors.Wrap(err, "Error post-processing job")
+			continue
 		}
-		results <- success
+		fmt.Printf("Post-processing '%s' took %.2fs\n", j.InputFile.Filename, time.Now().Sub(postProcessStart).Seconds())
 	}
+	// When jobs is closed, signal completion to indicate this worker is finished
+	completion <- true
 }
 
 // Perform any post-processing tasks after a job has been processed
-func jobPostProcess(job MediaJob, filenames []string) (err error) {
+func jobPostProcess(job MediaJob, filenames []string) error {
 	// TODO: Perhaps moving files to remote output location (SFTP, S3, ...) should occur here?
 	// May also not want to resized files to remain locally, so could remove them after moving
+
+	// TODO: This should be updated to use concurrency in some way. Currently just uploads files sequentially.
+	// Could upload files in parallel (make the most use of the network bandwidth) <- this option, I think
+	// Or could just shove the jobs into the background to free up the processing thread <- but then what if there's an error?
 
 	for _, filename := range filenames {
 		filekey := pixelio.StripFileOutputDir(filename)
@@ -88,17 +99,20 @@ func jobPostProcess(job MediaJob, filenames []string) (err error) {
 		// S3 upload
 		if job.Config.S3Enabled {
 			fmt.Printf("Uploading to S3: %s\n", filename)
-			s3.UploadFile(job.Config.S3Session, job.Config.S3Config.Bucket, filename, filekey)
+			err := s3.UploadFile(job.Config.S3Session, job.Config.S3Config.Bucket, filename, filekey)
+			if err != nil {
+				return errors.Wrap(err, "Unable to upload output files to S3")
+			}
 		}
 	}
 
 	if job.Config.MoveProcessed {
 		// Move file to output dir
-		if err = pixelio.MoveOriginal(job.InputFile, job.Config.ProcessedDir); err != nil {
-			log.Println("Unable to move processed file to processed dir:", err)
+		if err := pixelio.MoveOriginal(job.InputFile, job.Config.ProcessedDir); err != nil {
+			return errors.Wrap(err, "Unable to move processed file to processed dirj")
 		}
 	}
-	return
+	return nil
 }
 
 // ProcessVideo processes a single video
