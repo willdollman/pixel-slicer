@@ -76,8 +76,8 @@ func main() {
 			if watch := c.Bool("watch"); watch {
 				viper.Set("Watch", watch)
 			}
-			if enableS3 := c.String("enable-s3"); enableS3 != "" {
-				viper.Set("EnableS3", enableS3)
+			if s3Enabled := c.String("enable-s3"); s3Enabled != "" {
+				viper.Set("S3Enabled", s3Enabled)
 			}
 
 			// Read config file
