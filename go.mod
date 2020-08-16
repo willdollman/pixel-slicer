@@ -5,8 +5,10 @@ go 1.13
 require (
 	github.com/aws/aws-sdk-go v1.33.7
 	github.com/chai2010/webp v1.1.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/dsnet/compress v0.0.1 // indirect
+	github.com/frankban/quicktest v1.10.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.0
