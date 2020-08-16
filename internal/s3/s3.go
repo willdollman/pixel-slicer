@@ -42,7 +42,7 @@ func UploadFile(session *s3.S3, bucket string, filename string, filekey string) 
 		Key:    key,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload data to %s/%s", bucket, key)
+		return errors.Wrapf(err, "Failed to upload data to %s/%s", bucket, filename)
 	}
 
 	return nil
