@@ -46,6 +46,10 @@ func (c Config) ValidateConfig() (err error) {
 		return fmt.Errorf("No output dir supplied")
 	}
 
+	if c.Watch && !c.MoveProcessed {
+		return fmt.Errorf("--watch requires --move-processed to be enabled, to avoid files being processed multiple times")
+	}
+
 	return
 }
 

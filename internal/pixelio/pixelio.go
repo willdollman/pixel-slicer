@@ -1,8 +1,5 @@
 package pixelio
 
-// TODO: Should this be a submodule/folder of pixelslicer? How does namespace work here?
-// Ideally I'd call this io, but that's already taken!
-
 import (
 	"errors"
 	"fmt"
@@ -14,6 +11,7 @@ import (
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
+// InputFile represents an input file processed by the system
 type InputFile struct {
 	Path     string // Absolute filesystem path to file
 	Filename string // Name of file with extension
@@ -89,6 +87,7 @@ func EnumerateDirContents(dir string) (files []InputFile, err error) {
 	return
 }
 
+// TypeExtension is a map from media types to associated file extensions
 func TypeExtension() map[string][]string {
 	return map[string][]string{
 		"image": {".jpg", ".jpeg", ".png", ".tiff"},
@@ -121,7 +120,7 @@ func GetMediaType(file InputFile) (MediaType string) {
 
 // FilterValidFiles returns all valid file types in the input
 func FilterValidFiles(files []InputFile) (filteredFiles []InputFile) {
-	for mediaType, _ := range TypeExtension() {
+	for mediaType := range TypeExtension() {
 		f := FilterFileType(files, mediaType)
 		filteredFiles = append(filteredFiles, f...)
 	}
@@ -158,13 +157,14 @@ func GetFileOutputDir(f InputFile) (outputDir string) {
 	return
 }
 
+// StripFileOutputDir removes the base output directory from a an output file path, leaving just
+// the subdirectory path and the filename
 // TODO: This doesn't seem like the best way to do things
 func StripFileOutputDir(filename string) (baseFilename string) {
 	return strings.TrimPrefix(filename, baseOutputDir()+"/")
 }
 
 // GetFileOutputPath returns the path of the output version of a given file, included modifying the file extension
-// TODO: Do I want to something that's compatible with a Image/VideoConfiguration instead of width and ext?
 func GetFileOutputPath(f InputFile, mediaConfig config.MediaConfiguration) (outputPath string) {
 	// Include image quality in filename for debugging
 	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + mediaConfig.OutputFileName(false)
@@ -185,7 +185,6 @@ func EnsureOutputDirExists(subdir string) error {
 // EnsureDirExists ensures that given path exists, is a directory, and has the correct permissions
 func EnsureDirExists(dir string) error {
 	// Top level output dir
-	// TODO: Configure in config
 	dirPermissions := os.FileMode(0755)
 
 	f, err := os.Stat(dir)

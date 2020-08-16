@@ -70,7 +70,7 @@ func main() {
 			if processedDir := c.String("processeddir"); processedDir != "" {
 				viper.Set("ProcessedDir", processedDir)
 			}
-			if moveProcessed := c.String("move-processed"); moveProcessed != "" {
+			if moveProcessed := c.Bool("move-processed"); moveProcessed {
 				viper.Set("MoveProcessed", moveProcessed)
 			}
 			if watch := c.Bool("watch"); watch {
