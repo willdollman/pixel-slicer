@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"time"
 
@@ -276,12 +277,15 @@ func openImage() {
 }
 
 // imaging library typically returns image.NRGBA, so let's roll with that for now
-func resizeImage(srcImage image.Image, resizeWidth int) (resizedImage *image.NRGBA) {
-	width := srcImage.Bounds().Max.X
-	height := srcImage.Bounds().Max.Y
+func resizeImage(srcImage image.Image, targetWidth int) (resizedImage *image.NRGBA) {
+	imgWidth := srcImage.Bounds().Max.X
+	imgHeight := srcImage.Bounds().Max.Y
+	aspectRatio := float64(imgHeight) / float64(imgWidth)
 
-	resizeHeight := int(float64(resizeWidth) * (float64(height) / float64(width)))
-	// fmt.Printf("Resizing %d x %d -> %d x %d\n", width, height, resizeWidth, resizeHeight)
+	resizeWidth := int(math.Min(float64(imgWidth), float64(targetWidth)))
+	resizeHeight := int(float64(resizeWidth) * aspectRatio)
+
+	// fmt.Printf("Resizing %d x %d -> %d x %d\n", imgWidth, imgHeight, resizeWidth, resizeHeight)
 
 	// TODO: select best resizing algorithm. Lanczos sounds like a good starting point.
 	resizedImage = imaging.Resize(srcImage, resizeWidth, resizeHeight, imaging.Lanczos)
