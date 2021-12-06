@@ -7,8 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
 // InputFile represents an input file processed by the system
@@ -19,7 +17,7 @@ type InputFile struct {
 }
 
 // InputFileFromFullPath creates an InputFile from the input directory and the full path of a file
-func InputFileFromFullPath(dir string, fullpath string) (inputFile InputFile, err error) {
+func InputFileFromFullPath(dir string, fullpath string) (inputFile *InputFile, err error) {
 	fmt.Printf("Creating InputFile from %s and %s\n", dir, fullpath)
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -36,7 +34,7 @@ func InputFileFromFullPath(dir string, fullpath string) (inputFile InputFile, er
 	}
 	subdir, filename := filepath.Split(relPath)
 
-	inputFile = InputFile{
+	inputFile = &InputFile{
 		Path:     fullpath,
 		Filename: filename,
 		Subdir:   subdir,
@@ -47,7 +45,7 @@ func InputFileFromFullPath(dir string, fullpath string) (inputFile InputFile, er
 
 // EnumerateDirContents enumerates the contents of a directory, returning
 // an array of inputFiles
-func EnumerateDirContents(dir string) (files []InputFile, err error) {
+func EnumerateDirContents(dir string) (files []*InputFile, err error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -76,7 +74,7 @@ func EnumerateDirContents(dir string) (files []InputFile, err error) {
 
 		subdir, filename := filepath.Split(relPath)
 
-		file := InputFile{
+		file := &InputFile{
 			Path:     path,
 			Filename: filename,
 			Subdir:   subdir,
@@ -108,7 +106,7 @@ func ExtensionType() map[string]string {
 
 // GetMediaType detects media type from a file's extension.
 // Returns the corresponding key from TypeExtension()
-func GetMediaType(file InputFile) (MediaType string) {
+func GetMediaType(file *InputFile) (MediaType string) {
 	fileExt := strings.ToLower(filepath.Ext(file.Path))
 	mediaType, ok := ExtensionType()[fileExt]
 	if !ok {
@@ -119,7 +117,7 @@ func GetMediaType(file InputFile) (MediaType string) {
 }
 
 // FilterValidFiles returns all valid file types in the input
-func FilterValidFiles(files []InputFile) (filteredFiles []InputFile) {
+func FilterValidFiles(files []*InputFile) (filteredFiles []*InputFile) {
 	for mediaType := range TypeExtension() {
 		f := FilterFileType(files, mediaType)
 		filteredFiles = append(filteredFiles, f...)
@@ -128,7 +126,7 @@ func FilterValidFiles(files []InputFile) (filteredFiles []InputFile) {
 }
 
 // FilterFileType filters lists of files by type - image, video, etc
-func FilterFileType(files []InputFile, fileType string) (filteredFiles []InputFile) {
+func FilterFileType(files []*InputFile, fileType string) (filteredFiles []*InputFile) {
 	validExtensions, ok := TypeExtension()[fileType]
 	if ok == false {
 		log.Fatalf("No file type '%s'", fileType)
@@ -152,7 +150,7 @@ func baseOutputDir() (baseOutputDir string) {
 }
 
 // GetFileOutputDir returns the path of the output dir for a given file
-func GetFileOutputDir(f InputFile) (outputDir string) {
+func GetFileOutputDir(f *InputFile) (outputDir string) {
 	outputDir = filepath.Join(baseOutputDir(), f.Subdir)
 	return
 }
@@ -165,9 +163,9 @@ func StripFileOutputDir(filename string) (baseFilename string) {
 }
 
 // GetFileOutputPath returns the path of the output version of a given file, included modifying the file extension
-func GetFileOutputPath(f InputFile, mediaConfig config.MediaConfiguration) (outputPath string) {
+func GetFileOutputPath(f *InputFile, fileExt string) (outputPath string) {
 	// Include image quality in filename for debugging
-	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + mediaConfig.OutputFileName(false)
+	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + fileExt
 	// outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(config.MaxWidth) + "-" + strconv.Itoa(config.Quality) + "." + ext
 
 	outputPath = filepath.Join(GetFileOutputDir(f), outputFilename)
@@ -212,7 +210,7 @@ func EnsureDirExists(dir string) error {
 }
 
 // MoveOriginal moves the provided input file to the provided directory, preserving subdirectory structure
-func MoveOriginal(file InputFile, moveDir string) (err error) {
+func MoveOriginal(file *InputFile, moveDir string) (err error) {
 	fullMoveDir := filepath.Join(moveDir, file.Subdir)
 	if err = EnsureDirExists(fullMoveDir); err != nil {
 		return err

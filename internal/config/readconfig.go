@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func GetConfig(configPath string) (*Config, error) {
+func GetConfig(configPath string) (*ReadableConfig, error) {
 	// Default configuration
 	viper.SetDefault("InputDir", "input")
 	viper.SetDefault("OutputDir", "output")
@@ -41,7 +41,7 @@ func GetConfig(configPath string) (*Config, error) {
 		}
 	}
 
-	var appConfig Config
+	var appConfig ReadableConfig
 
 	if err := viper.Unmarshal(&appConfig); err != nil {
 		log.Fatal("Error unmarshalling config")

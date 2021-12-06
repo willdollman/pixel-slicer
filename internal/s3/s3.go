@@ -10,25 +10,45 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
-	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
-// Return an s3 session, given a config.S3Config
-func S3Session(c config.S3Config) *s3.S3 {
+// S3Client contains configuration and a client for an S3-compatible storage service
+type S3Client struct {
+	S3     *s3.S3
+	Config S3Config
+}
+
+// S3Config contains configuration for an S3-compatible storage service
+type S3Config struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	EndpointURL     string `mapstructure:"Endpoint"`
+	Region          string
+	Bucket          string
+	Enabled         bool
+}
+
+// NewSession returns a new S3 session, given an S3Config
+func NewClient(conf S3Config) (client *S3Client) {
 	s3Config := &aws.Config{
-		Endpoint:         aws.String(c.EndpointURL),
-		Region:           aws.String(c.Region),
+		Endpoint:         aws.String(conf.EndpointURL),
+		Region:           aws.String(conf.Region),
 		S3ForcePathStyle: aws.Bool(true),
 	}
-	if c.AccessKeyID != "" && c.SecretAccessKey != "" {
-		s3Config.Credentials = credentials.NewStaticCredentials(c.AccessKeyID, c.SecretAccessKey, "")
+	if conf.AccessKeyID != "" && conf.SecretAccessKey != "" {
+		s3Config.Credentials = credentials.NewStaticCredentials(conf.AccessKeyID, conf.SecretAccessKey, "")
 	}
+
 	sess := session.New(s3Config)
-	return s3.New(sess)
+
+	return &S3Client{
+		S3:     s3.New(sess),
+		Config: conf,
+	}
 }
 
 // UploadFile uploads the file filename to the supplied bucket with the key filekey using the provided S3 session.
-func UploadFile(session *s3.S3, bucket string, filename string, filekey string) error {
+func (s *S3Client) UploadFile(filename string, filekey string) error {
 	key := aws.String(filekey)
 
 	f, err := os.Open(filename)
@@ -36,22 +56,22 @@ func UploadFile(session *s3.S3, bucket string, filename string, filekey string) 
 		return errors.Wrapf(err, "Unable to open file '%s' for upload", filename)
 	}
 
-	_, err = session.PutObject(&s3.PutObjectInput{
+	_, err = s.S3.PutObject(&s3.PutObjectInput{
 		Body:   f,
-		Bucket: aws.String(bucket),
+		Bucket: aws.String(s.Config.Bucket),
 		Key:    key,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload data to %s/%s", bucket, filename)
+		return errors.Wrapf(err, "Failed to upload data to %s/%s", s.Config.Bucket, filename)
 	}
 
 	return nil
 }
 
-func ListBucket(session *s3.S3, bucket string) (err error) {
-	resp, err := session.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket)})
+func (s *S3Client) ListBucket() (err error) {
+	resp, err := s.S3.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(s.Config.Bucket)})
 	if err != nil {
-		log.Printf("Unable to list items in bucket %q, %v", bucket, err)
+		log.Printf("Unable to list items in bucket %q, %v", s.Config.Bucket, err)
 		return
 	}
 

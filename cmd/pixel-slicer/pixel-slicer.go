@@ -8,8 +8,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli"
+	"github.com/willdollman/pixel-slicer/internal/config"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer"
-	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 	"github.com/willdollman/pixel-slicer/internal/s3"
 )
 
@@ -18,42 +18,15 @@ func main() {
 		Name:  "pixel-slicer",
 		Usage: "Media resizing and uploading",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "config",
-				Usage: "location of config file",
-			},
-			&cli.StringFlag{
-				Name:  "dir",
-				Usage: "directory to process",
-			},
-			&cli.StringFlag{
-				Name:  "outputdir",
-				Usage: "directory to output files to",
-			},
-			&cli.BoolFlag{
-				Name:  "move-processed",
-				Usage: "whether to move files to a separate directory once processed",
-			},
-			&cli.StringFlag{
-				Name:  "processeddir",
-				Usage: "directory to move files to once they have been processed",
-			},
-			&cli.BoolFlag{
-				Name:  "enable-s3",
-				Usage: "Enable S3 upload, if configured",
-			},
-			&cli.BoolFlag{
-				Name:  "sample-config",
-				Usage: "Write a sample config file to example-config.yaml, including any supplied modifications",
-			},
-			&cli.BoolFlag{
-				Name:  "print-config",
-				Usage: "Print the current configuration and exit",
-			},
-			&cli.BoolFlag{
-				Name:  "watch",
-				Usage: "Watch the input directory for new files",
-			},
+			&cli.StringFlag{Name: "config", Usage: "location of config file"},
+			&cli.StringFlag{Name: "dir", Usage: "directory to process"},
+			&cli.StringFlag{Name: "outputdir", Usage: "directory to output files to"},
+			&cli.BoolFlag{Name: "move-processed", Usage: "whether to move files to a separate directory once processed"},
+			&cli.StringFlag{Name: "processeddir", Usage: "directory to move files to once they have been processed"},
+			&cli.BoolFlag{Name: "enable-s3", Usage: "Enable S3 upload, if configured"},
+			&cli.BoolFlag{Name: "sample-config", Usage: "Write a sample config file to example-config.yaml, including any supplied modifications"},
+			&cli.BoolFlag{Name: "print-config", Usage: "Print the current configuration and exit"},
+			&cli.BoolFlag{Name: "watch", Usage: "Watch the input directory for new files"},
 			// TODO: Allow num workers to be passed as a parameter
 		},
 		Action: func(c *cli.Context) error {
@@ -77,7 +50,7 @@ func main() {
 				viper.Set("Watch", watch)
 			}
 			if s3Enabled := c.Bool("enable-s3"); s3Enabled {
-				viper.Set("S3Enabled", s3Enabled)
+				viper.Set("S3Enabled.Enabled", s3Enabled) // TODO: Does this work after changing ReadableConfig?
 			}
 
 			// Read config file
@@ -106,11 +79,13 @@ func main() {
 				os.Exit(0)
 			}
 
-			// TODO: This shouldn't be added to the config - it should be passed as part of a new struct
-			// which contains the config, S3Session, FTPSession, etc
-			conf.S3Session = s3.S3Session(conf.S3Config)
+			p := &pixelslicer.PixelSlicer{
+				S3Client:    s3.NewClient(conf.S3Config),
+				FSConfig:    conf.GetFSConfig(),
+				MediaConfig: conf.GetMediaConfig(),
+			}
 
-			pixelslicer.ProcessFiles(*conf)
+			p.ProcessFiles(*conf)
 
 			return nil
 		},

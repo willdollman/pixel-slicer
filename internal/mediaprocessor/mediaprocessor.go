@@ -15,9 +15,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/hashicorp/go-multierror"
 	"github.com/nickalie/go-webpbin"
-	"github.com/pkg/errors"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
-	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 	"github.com/willdollman/pixel-slicer/internal/s3"
 	"github.com/xfrr/goffmpeg/transcoder"
 )
@@ -28,115 +26,44 @@ type ImageOutputConfig struct {
 	quality int
 }
 
+// TODO: These currently aren't used for anything
 type ImageProcessor interface {
 	ResizeImage(inputFile string, outputDir string, width int, quality int, format string) (fileName string, err error)
 }
-
 type VideoProcessor interface {
 	ResizeVideo(inputFile string, outputDir string, width int, quality int, format string) (fileName string, err error)
 }
 
 type MediaJob struct {
-	Config    config.Config
-	InputFile pixelio.InputFile
-}
-
-// WorkerProcessMedia is a worker in a worker pool. It reads media jobs from the queue, and reports success/failure.
-// This is fine for a one-shot thing where you have a fixed number of jobs, but how
-// should it work with an unknown # jobs (and unknown delay between jobs)?
-// Also doesn't allow us to pass errors back up the caller.
-func WorkerProcessMedia(jobs <-chan MediaJob, errc chan<- error, completion chan<- bool) {
-	for j := range jobs {
-		mediaType := pixelio.GetMediaType(j.InputFile)
-
-		var filenames []string
-		var err error
-		startTime := time.Now()
-
-		// TODO: Here, or in the ProcessX methods, we should check the file still exists
-
-		switch mediaType {
-		case "image":
-			filenames, err = ProcessImage(j.Config, j.InputFile)
-			if err != nil {
-				errc <- errors.Wrap(err, "Error processing image") // TODO: not sure this wrap adds much!
-				continue
-			}
-		case "video":
-			filenames, err = ProcessVideo(j.Config, j.InputFile)
-			if err != nil {
-				errc <- errors.Wrap(err, "Error processing video")
-				continue
-			}
-		default:
-			errc <- errors.Wrapf(err, "Unable to process media, unknown media type '%s'", mediaType)
-			continue
-		}
-		fmt.Printf("Encoding '%s' took %.2fs\n", j.InputFile.Filename, time.Now().Sub(startTime).Seconds())
-
-		postProcessStart := time.Now()
-		if err := jobPostProcess(j, filenames); err != nil {
-			errc <- errors.Wrap(err, "Error post-processing job")
-			continue
-		}
-		fmt.Printf("Post-processing '%s' took %.2fs\n", j.InputFile.Filename, time.Now().Sub(postProcessStart).Seconds())
-	}
-	// When jobs is closed, signal completion to indicate this worker is finished
-	completion <- true
-}
-
-// Perform any post-processing tasks after a job has been processed
-func jobPostProcess(job MediaJob, filenames []string) error {
-	// TODO: May not want to resized files to remain locally, so could remove them after moving
-
-	// TODO: This should be updated to use concurrency in some way. Currently just uploads files sequentially.
-	// Could upload files in parallel (make the most use of the network bandwidth) <- this option, I think
-	// Or could just shove the jobs into the background to free up the processing thread <- but then what if there's an error?
-	// Equally, multiple workers mean we'll already be uploading in parallel - too much could actually slow it down
-
-	for _, filename := range filenames {
-		filekey := pixelio.StripFileOutputDir(filename)
-
-		// S3 upload
-		if job.Config.S3Enabled {
-			fmt.Printf("Uploading to S3: %s\n", filename)
-			err := s3.UploadFile(job.Config.S3Session, job.Config.S3Config.Bucket, filename, filekey)
-			if err != nil {
-				return errors.Wrap(err, "Unable to upload output files to S3")
-			}
-		}
-	}
-
-	if job.Config.MoveProcessed {
-		// Move file to output dir
-		if err := pixelio.MoveOriginal(job.InputFile, job.Config.ProcessedDir); err != nil {
-			return errors.Wrap(err, "Unable to move processed file to processed dirj")
-		}
-	}
-	return nil
+	MediaConfig *MediaConfig // TODO: Might be a bit verbose
+	FSConfig    *FSConfig    // TODO: Might be a bit verbose
+	S3Client    *s3.S3Client
+	InputFile   *pixelio.InputFile
 }
 
 // ProcessVideo processes a single video
-func ProcessVideo(conf config.Config, inputFile pixelio.InputFile) (filenames []string, allErrors error) {
+func (m *MediaJob) ProcessVideo() (filenames []string, allErrors error) {
 	fmt.Println("Transcoding video, this may take a while...")
 
-	if err := pixelio.EnsureOutputDirExists(inputFile.Subdir); err != nil {
+	if err := pixelio.EnsureOutputDirExists(m.InputFile.Subdir); err != nil {
 		log.Fatal("Unable to prepare output dir:", err)
 	}
 
-	for _, videoConfig := range conf.VideoConfigurations {
+	for _, videoConfig := range m.MediaConfig.VideoConfigurations {
 		var err error
 		// Depending on the requested media type, either transcode video or generate a thumbnail
-		if videoConfig.FileType.GetMediaType() == config.Video {
-			err = videoTranscode(videoConfig, inputFile)
-		} else if videoConfig.FileType.GetMediaType() == config.Image {
-			err = videoThumbnail(videoConfig, inputFile)
+		if videoConfig.FileType.GetMediaType() == Video {
+			encodeStartTime := time.Now()
+			err = videoTranscode(videoConfig, m.InputFile)
+			fmt.Printf("Encoding took %.2fs\n", time.Now().Sub(encodeStartTime).Seconds())
+		} else if videoConfig.FileType.GetMediaType() == Image {
+			err = videoThumbnail(videoConfig, m.InputFile)
 		} else {
 			err = fmt.Errorf("Configuration contains unknown media type: %s", videoConfig.FileType)
 		}
 
 		if err == nil {
-			outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
+			outputFilepath := pixelio.GetFileOutputPath(m.InputFile, videoConfig.OutputFileSuffix(false))
 			filenames = append(filenames, outputFilepath)
 		} else {
 			allErrors = multierror.Append(allErrors, err)
@@ -145,8 +72,8 @@ func ProcessVideo(conf config.Config, inputFile pixelio.InputFile) (filenames []
 	return
 }
 
-func videoThumbnail(videoConfig config.VideoConfiguration, inputFile pixelio.InputFile) (err error) {
-	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
+func videoThumbnail(videoConfig VideoConfiguration, inputFile *pixelio.InputFile) (err error) {
+	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig.OutputFileSuffix(false))
 
 	t := new(transcoder.Transcoder)
 	if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
@@ -173,8 +100,8 @@ func videoThumbnail(videoConfig config.VideoConfiguration, inputFile pixelio.Inp
 	return
 }
 
-func videoTranscode(videoConfig config.VideoConfiguration, inputFile pixelio.InputFile) (err error) {
-	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig)
+func videoTranscode(videoConfig VideoConfiguration, inputFile *pixelio.InputFile) (err error) {
+	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig.OutputFileSuffix(false))
 
 	// Ensure maxWidth is even - required by some codecs
 	maxWidth := videoConfig.MaxWidth
@@ -188,13 +115,30 @@ func videoTranscode(videoConfig config.VideoConfiguration, inputFile pixelio.Inp
 		return
 	}
 
-	t.MediaFile().SetVideoCodec("libx264")                             // TODO: Configure codecs via config
-	t.MediaFile().SetVideoFilter(fmt.Sprintf("scale=%d:-2", maxWidth)) // -2 ensures height is a multiple of 2
-	t.MediaFile().SetMovFlags("+faststart")
-	t.MediaFile().SetCRF(uint32(videoConfig.Quality))
-	t.MediaFile().SetPreset(videoConfig.Preset)
-	// t.MediaFile().SetAudioCodec("aac") // unsure if we want to explicitly say - will ffmpeg pick a good default otherwise?
-	//t.MediaFile().SetSkipAudio(true) // disable audio - we want to strip audio when generating input file instead
+	fmt.Printf("Config is %+v\n", videoConfig)
+
+	if videoConfig.FileType == "mp4" {
+		t.MediaFile().SetVideoCodec("libx264")                             // TODO: Configure codecs via config
+		t.MediaFile().SetVideoFilter(fmt.Sprintf("scale=%d:-2", maxWidth)) // -2 ensures height is a multiple of 2
+		t.MediaFile().SetMovFlags("+faststart")
+		t.MediaFile().SetCRF(uint32(videoConfig.Quality))
+		t.MediaFile().SetPreset(videoConfig.Preset)
+		// t.MediaFile().SetAudioCodec("aac") // unsure if we want to explicitly say - will ffmpeg pick a good default otherwise?
+		//t.MediaFile().SetSkipAudio(true) // disable audio - we want to strip audio when generating input file instead
+	} else if videoConfig.FileType == "webm" {
+		t.MediaFile().SetVideoCodec("libvpx-vp9")                          // TODO: Configure codecs via config
+		t.MediaFile().SetVideoFilter(fmt.Sprintf("scale=%d:-2", maxWidth)) // -2 ensures height is a multiple of 2
+	} else if videoConfig.FileType == "av1" {
+		t.MediaFile().SetVideoCodec("libaom-av1")
+		t.MediaFile().SetVideoFilter(fmt.Sprintf("scale=%d:-2", maxWidth))
+		t.MediaFile().SetCRF(uint32(videoConfig.Quality))
+		t.MediaFile().SetVideoBitRate("0")
+	} else {
+		err = fmt.Errorf("Unknown video file type '%s'", videoConfig.FileType)
+		return
+	}
+
+	fmt.Printf("Writing file to %s\n", outputFilepath)
 
 	done := t.Run(false)
 	err = <-done
@@ -202,11 +146,11 @@ func videoTranscode(videoConfig config.VideoConfiguration, inputFile pixelio.Inp
 }
 
 // ProcessImage processes a single image
-func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (filenames []string, err error) {
+func (m *MediaJob) ProcessImage() (filenames []string, err error) {
 	// TODO: Do a better job of handling errors - returning early and using multierror to report all errors to the caller
 	// Read file in
 	// os.File conforms to io.Reader, which we can call Decode on
-	fh, err := os.Open(inputFile.Path)
+	fh, err := os.Open(m.InputFile.Path)
 	defer fh.Close()
 	if err != nil {
 		log.Fatal("Could not read file")
@@ -214,18 +158,18 @@ func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (filenames []
 
 	srcImage, _, err := image.Decode(fh)
 	if err != nil {
-		log.Fatal("Error decoding image: ", inputFile.Path)
+		log.Fatal("Error decoding image: ", m.InputFile.Path)
 	}
 
-	for _, imageConfig := range conf.ImageConfigurations {
+	for _, imageConfig := range m.MediaConfig.ImageConfigurations {
 		// Resize image
 		resizedImage := resizeImage(srcImage, imageConfig.MaxWidth)
 
 		// Write file out
-		if err := pixelio.EnsureOutputDirExists(inputFile.Subdir); err != nil {
+		if err := pixelio.EnsureOutputDirExists(m.InputFile.Subdir); err != nil {
 			log.Fatal("Unable to prepare output dir:", err)
 		}
-		outputFilepath := pixelio.GetFileOutputPath(inputFile, imageConfig)
+		outputFilepath := pixelio.GetFileOutputPath(m.InputFile, imageConfig.OutputFileSuffix(false))
 		fmt.Println("File output path is", outputFilepath)
 		outfh, err := os.Create(outputFilepath)
 		defer outfh.Close()
@@ -236,10 +180,10 @@ func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (filenames []
 		// TODO: time each encode operation
 		// Select encoder based on config...
 		switch imageConfig.FileType {
-		case config.JPG:
+		case JPG:
 			fmt.Println("Encoding output file to JPG")
 			jpeg.Encode(outfh, resizedImage, &jpeg.Options{Quality: imageConfig.Quality})
-		case config.WebP:
+		case WebP:
 			fmt.Println("Encoding output file to WebP with chai2010")
 			var buf bytes.Buffer
 			if err = webp.Encode(&buf, resizedImage, &webp.Options{Quality: float32(imageConfig.Quality)}); err != nil {
@@ -248,7 +192,7 @@ func ProcessImage(conf config.Config, inputFile pixelio.InputFile) (filenames []
 			if err = ioutil.WriteFile(outputFilepath, buf.Bytes(), 0664); err != nil {
 				log.Println(err)
 			}
-		case config.WebPBin:
+		case WebPBin:
 			fmt.Println("Encoding output file to WebP with webpbin")
 			f, err := os.Create(outputFilepath)
 			defer f.Close()

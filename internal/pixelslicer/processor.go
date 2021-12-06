@@ -6,29 +6,28 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/radovskyb/watcher"
+	"github.com/willdollman/pixel-slicer/internal/config"
 	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
-	"github.com/willdollman/pixel-slicer/internal/pixelslicer/config"
 )
 
 // ProcessFiles oversees all file processing tasks.
 // It spawns a worker pool, and then calls filesystem-observing functions to queue jobs for those workers.
 // It then monitors the workers, and shuts down when required.
-func ProcessFiles(conf config.Config) {
+func (p *PixelSlicer) ProcessFiles(conf config.ReadableConfig) {
 	// Create some workers, based on the number of CPU cores available
 	numWorkers := runtime.NumCPU() / 2
 	fmt.Println("Creating", numWorkers, "workers")
-	jobs := make(chan mediaprocessor.MediaJob, 2048)
+	jobQueue := make(chan mediaprocessor.MediaJob, 2048)
 	errc := make(chan error)
 	completion := make(chan bool)
 	for w := 1; w <= numWorkers; w++ {
-		go mediaprocessor.WorkerProcessMedia(jobs, errc, completion)
+		go WorkerProcessMedia(jobQueue, errc, completion)
 	}
 
 	// Always queue any files which are already in the directory
-	processOneShot(conf, jobs)
+	p.processOneShot(jobQueue)
 
 	// We need to be careful that we don't try and process the same file twice - otherwise the workers will fight over it.
 	// So until we mitigate that, start monitoring the directory once processOneShot has completed
@@ -37,11 +36,11 @@ func ProcessFiles(conf config.Config) {
 
 	if conf.Watch {
 		fmt.Println("Continuing to monitor input directory for new files...")
-		processWatchDir(conf, jobs)
+		p.processWatchDir(jobQueue)
 	} else {
 		// Not monitoring inputDir - we're only interested in the files already in the input directory,
 		// so close jobs to signal we have no further tasks
-		close(jobs)
+		close(jobQueue)
 	}
 
 	// If jobs is closed, workers will send completion to indicate they're out of tasks.
@@ -64,7 +63,9 @@ func ProcessFiles(conf config.Config) {
 	// call completion
 }
 
-func processWatchDir(conf config.Config, jobQueue chan<- mediaprocessor.MediaJob) {
+// processWatchDir watches the input directory for newly added media files. If a new file is found,
+// it is added to the jobQueue.
+func (p *PixelSlicer) processWatchDir(jobQueue chan<- mediaprocessor.MediaJob) {
 	w := watcher.New()
 
 	w.FilterOps(watcher.Create)
@@ -78,22 +79,26 @@ func processWatchDir(conf config.Config, jobQueue chan<- mediaprocessor.MediaJob
 				// Only
 				if !event.IsDir() {
 					fmt.Println(event)
-					inputFile, err := pixelio.InputFileFromFullPath(conf.InputDir, event.Path)
+					inputFile, err := pixelio.InputFileFromFullPath(p.FSConfig.InputDir, event.Path)
 					if err != nil {
 						log.Printf("Unable to create InputFile from event: %s\n", err)
 						continue
 					}
-					// TOOD: Queue inputFile as job
 					fmt.Printf("Created inputfile from event: %+v\n", inputFile)
 
 					// Check if inputFile is a valid file type
-					validInputFiles := pixelio.FilterValidFiles([]pixelio.InputFile{inputFile})
+					validInputFiles := pixelio.FilterValidFiles([]*pixelio.InputFile{inputFile})
 					if len(validInputFiles) == 0 {
 						fmt.Printf("File was not a valid filetype")
 						continue
 					}
 
-					job := mediaprocessor.MediaJob{Config: conf, InputFile: inputFile} // TODO: Would we save memory by passing a reference to conf?
+					job := mediaprocessor.MediaJob{
+						MediaConfig: p.MediaConfig,
+						FSConfig:    p.FSConfig,
+						S3Client:    p.S3Client,
+						InputFile:   inputFile,
+					}
 					jobQueue <- job
 				}
 			case err := <-w.Error:
@@ -105,7 +110,7 @@ func processWatchDir(conf config.Config, jobQueue chan<- mediaprocessor.MediaJob
 	}()
 
 	// Add input dir to watched directories
-	if err := w.AddRecursive(conf.InputDir); err != nil {
+	if err := w.AddRecursive(p.FSConfig.InputDir); err != nil {
 		log.Fatal(err)
 	}
 
@@ -115,61 +120,20 @@ func processWatchDir(conf config.Config, jobQueue chan<- mediaprocessor.MediaJob
 	}
 }
 
-// ProcessWatchDir watches a directory and processes all new files which are added
-func processWatchDirFsnotify(conf config.Config) {
-	// We need to process all the files which are already in the directory
-	// Then we need to monitor it for new files...
+// processOneShot crawls a directory tree looking for files of the correct type. Any matching
+// files are added to the jobQueue.
+func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) {
+	fmt.Println("Processing directory", p.FSConfig.InputDir)
 
-	watcher, err := fsnotify.NewWatcher()
+	files, err := pixelio.EnumerateDirContents(p.FSConfig.InputDir)
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer watcher.Close()
-
-	done := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				if event.Op&fsnotify.Create == fsnotify.Create {
-					fmt.Println("File has been created:", event.Name)
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error", err)
-			}
-		}
-	}()
-
-	// Need to queue input directory AND all subdirectories
-	fmt.Println("Watching dir", conf.InputDir)
-	err = watcher.Add(conf.InputDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	<-done
-}
-
-// ProcessOneShot processes a directory of files in a one-shot fashion,
-// not worrying about new files being added
-func processOneShot(conf config.Config, jobQueue chan<- mediaprocessor.MediaJob) {
-	fmt.Println("Processing directory", conf.InputDir)
-
-	files, err := pixelio.EnumerateDirContents(conf.InputDir)
-	if err != nil {
-		log.Fatal("Cannot enumerate supplied directory", conf.InputDir)
+		log.Fatal("Cannot enumerate supplied directory", p.FSConfig.InputDir)
 	}
 
 	// Filter out valid file types
 	filteredFiles := pixelio.FilterValidFiles(files)
 	// Only used for stats - deletable
-	mediaFiles := make(map[string][]pixelio.InputFile)
+	mediaFiles := make(map[string][]*pixelio.InputFile)
 	for mediaType, _ := range pixelio.TypeExtension() {
 		mediaFiles[mediaType] = pixelio.FilterFileType(files, mediaType)
 	}
@@ -186,7 +150,12 @@ func processOneShot(conf config.Config, jobQueue chan<- mediaprocessor.MediaJob)
 		// }
 
 		// Multithreaded image processing
-		job := mediaprocessor.MediaJob{Config: conf, InputFile: file} // TODO: Would we save memory by passing a reference to conf?
+		job := mediaprocessor.MediaJob{
+			MediaConfig: p.MediaConfig,
+			FSConfig:    p.FSConfig,
+			S3Client:    p.S3Client,
+			InputFile:   file,
+		}
 		jobQueue <- job
 	}
 
