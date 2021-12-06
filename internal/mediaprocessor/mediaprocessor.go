@@ -41,29 +41,40 @@ type MediaJob struct {
 	InputFile   *pixelio.InputFile
 }
 
+// OutputPath returns the full output path for a MediaJob with a specific MediaConfiguration
+// e.g. output/subdir1/sunset-x100.jpg
+func (m *MediaJob) OutputPath(mediaConfiguration MediaConfiguration) string {
+	return pixelio.GetFileOutputPath(m.FSConfig.OutputDir, m.InputFile, mediaConfiguration.OutputFileSuffix(false))
+}
+
+// CheckOutputDir ensures that a job's output subdirectory exists
+func (m *MediaJob) CheckOutputDir() {
+	if err := pixelio.EnsureOutputDirExists(m.FSConfig.OutputDir, m.InputFile.Subdir); err != nil {
+		log.Fatal("Unable to prepare output dir:", err)
+	}
+}
+
 // ProcessVideo processes a single video
 func (m *MediaJob) ProcessVideo() (filenames []string, allErrors error) {
 	fmt.Println("Transcoding video, this may take a while...")
 
-	if err := pixelio.EnsureOutputDirExists(m.InputFile.Subdir); err != nil {
-		log.Fatal("Unable to prepare output dir:", err)
-	}
+	m.CheckOutputDir()
 
 	for _, videoConfig := range m.MediaConfig.VideoConfigurations {
 		var err error
 		// Depending on the requested media type, either transcode video or generate a thumbnail
 		if videoConfig.FileType.GetMediaType() == Video {
 			encodeStartTime := time.Now()
-			err = videoTranscode(videoConfig, m.InputFile)
+			err = m.videoTranscode(videoConfig)
 			fmt.Printf("Encoding took %.2fs\n", time.Now().Sub(encodeStartTime).Seconds())
 		} else if videoConfig.FileType.GetMediaType() == Image {
-			err = videoThumbnail(videoConfig, m.InputFile)
+			err = m.videoThumbnail(videoConfig)
 		} else {
 			err = fmt.Errorf("Configuration contains unknown media type: %s", videoConfig.FileType)
 		}
 
 		if err == nil {
-			outputFilepath := pixelio.GetFileOutputPath(m.InputFile, videoConfig.OutputFileSuffix(false))
+			outputFilepath := m.OutputPath(videoConfig)
 			filenames = append(filenames, outputFilepath)
 		} else {
 			allErrors = multierror.Append(allErrors, err)
@@ -72,11 +83,11 @@ func (m *MediaJob) ProcessVideo() (filenames []string, allErrors error) {
 	return
 }
 
-func videoThumbnail(videoConfig VideoConfiguration, inputFile *pixelio.InputFile) (err error) {
-	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig.OutputFileSuffix(false))
+func (m *MediaJob) videoThumbnail(videoConfig VideoConfiguration) (err error) {
+	outputFilepath := m.OutputPath(videoConfig)
 
 	t := new(transcoder.Transcoder)
-	if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
+	if err = t.Initialize(m.InputFile.Path, outputFilepath); err != nil {
 		log.Println("Error initialising video transcoder:", err)
 		return
 	}
@@ -100,8 +111,8 @@ func videoThumbnail(videoConfig VideoConfiguration, inputFile *pixelio.InputFile
 	return
 }
 
-func videoTranscode(videoConfig VideoConfiguration, inputFile *pixelio.InputFile) (err error) {
-	outputFilepath := pixelio.GetFileOutputPath(inputFile, videoConfig.OutputFileSuffix(false))
+func (m *MediaJob) videoTranscode(videoConfig VideoConfiguration) (err error) {
+	outputFilepath := m.OutputPath(videoConfig)
 
 	// Ensure maxWidth is even - required by some codecs
 	maxWidth := videoConfig.MaxWidth
@@ -110,7 +121,7 @@ func videoTranscode(videoConfig VideoConfiguration, inputFile *pixelio.InputFile
 	}
 
 	t := new(transcoder.Transcoder)
-	if err = t.Initialize(inputFile.Path, outputFilepath); err != nil {
+	if err = t.Initialize(m.InputFile.Path, outputFilepath); err != nil {
 		log.Println("Error initialising video transcoder:", err)
 		return
 	}
@@ -166,10 +177,8 @@ func (m *MediaJob) ProcessImage() (filenames []string, err error) {
 		resizedImage := resizeImage(srcImage, imageConfig.MaxWidth)
 
 		// Write file out
-		if err := pixelio.EnsureOutputDirExists(m.InputFile.Subdir); err != nil {
-			log.Fatal("Unable to prepare output dir:", err)
-		}
-		outputFilepath := pixelio.GetFileOutputPath(m.InputFile, imageConfig.OutputFileSuffix(false))
+		m.CheckOutputDir()
+		outputFilepath := m.OutputPath(imageConfig)
 		fmt.Println("File output path is", outputFilepath)
 		outfh, err := os.Create(outputFilepath)
 		defer outfh.Close()

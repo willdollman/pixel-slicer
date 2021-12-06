@@ -63,7 +63,7 @@ func jobPostProcess(job mediaprocessor.MediaJob, filenames []string) error {
 	// Equally, multiple workers mean we'll already be uploading in parallel - too much could actually slow it down
 
 	for _, filename := range filenames {
-		filekey := pixelio.StripFileOutputDir(filename)
+		filekey := pixelio.StripFileOutputDir(job.FSConfig.OutputDir, filename)
 
 		// S3 upload
 		if job.S3Client.Config.Enabled {

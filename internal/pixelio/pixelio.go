@@ -144,38 +144,27 @@ FILE:
 	return
 }
 
-// TODO: Load from config file
-func baseOutputDir() (baseOutputDir string) {
-	return "output"
-}
-
-// GetFileOutputDir returns the path of the output dir for a given file
-func GetFileOutputDir(f *InputFile) (outputDir string) {
-	outputDir = filepath.Join(baseOutputDir(), f.Subdir)
-	return
-}
-
 // StripFileOutputDir removes the base output directory from a an output file path, leaving just
 // the subdirectory path and the filename
 // TODO: This doesn't seem like the best way to do things
-func StripFileOutputDir(filename string) (baseFilename string) {
-	return strings.TrimPrefix(filename, baseOutputDir()+"/")
+func StripFileOutputDir(parentOutputDir string, filename string) (baseFilename string) {
+	return strings.TrimPrefix(filename, parentOutputDir+"/")
 }
 
 // GetFileOutputPath returns the path of the output version of a given file, included modifying the file extension
-func GetFileOutputPath(f *InputFile, fileExt string) (outputPath string) {
+func GetFileOutputPath(parentOutputDir string, f *InputFile, fileExt string) (outputPath string) {
 	// Include image quality in filename for debugging
 	outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + fileExt
 	// outputFilename := strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename)) + "-" + strconv.Itoa(config.MaxWidth) + "-" + strconv.Itoa(config.Quality) + "." + ext
 
-	outputPath = filepath.Join(GetFileOutputDir(f), outputFilename)
+	outputPath = filepath.Join(parentOutputDir, f.Subdir, outputFilename)
 
 	return
 }
 
 // EnsureOutputDirExists ensures that the configured output dir, or subdirectory thereof, exists
-func EnsureOutputDirExists(subdir string) error {
-	fullDir := filepath.Join(baseOutputDir(), subdir)
+func EnsureOutputDirExists(parentOutputDir string, subdir string) error {
+	fullDir := filepath.Join(parentOutputDir, subdir)
 
 	return EnsureDirExists(fullDir)
 }
