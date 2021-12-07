@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/urfave/cli"
 	"github.com/willdollman/pixel-slicer/internal/config"
+	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 	"github.com/willdollman/pixel-slicer/internal/pixelslicer"
 	"github.com/willdollman/pixel-slicer/internal/s3"
 )
@@ -80,9 +81,10 @@ func main() {
 			}
 
 			p := &pixelslicer.PixelSlicer{
-				S3Client:    s3.NewClient(conf.S3Config),
-				FSConfig:    conf.GetFSConfig(),
-				MediaConfig: conf.GetMediaConfig(),
+				S3Client:       s3.NewClient(conf.S3Config),
+				FSConfig:       conf.GetFSConfig(),
+				MediaConfig:    conf.GetMediaConfig(),
+				MediaProcessor: mediaprocessor.New(),
 			}
 
 			p.ProcessFiles(*conf)

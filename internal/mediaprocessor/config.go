@@ -11,7 +11,7 @@ type FSConfig struct {
 	Watch         bool
 }
 
-// MediaConfig contains the image and video output parameters used when processing media
+// MediaConfig contains the image and video output parameters used when encoding media
 type MediaConfig struct {
 	ImageConfigurations []ImageConfiguration
 	VideoConfigurations []VideoConfiguration

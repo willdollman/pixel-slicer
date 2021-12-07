@@ -94,10 +94,11 @@ func (p *PixelSlicer) processWatchDir(jobQueue chan<- mediaprocessor.MediaJob) {
 					}
 
 					job := mediaprocessor.MediaJob{
-						MediaConfig: p.MediaConfig,
-						FSConfig:    p.FSConfig,
-						S3Client:    p.S3Client,
-						InputFile:   inputFile,
+						MediaConfig:    p.MediaConfig,
+						FSConfig:       p.FSConfig,
+						S3Client:       p.S3Client,
+						InputFile:      inputFile,
+						MediaProcessor: p.MediaProcessor,
 					}
 					jobQueue <- job
 				}
@@ -151,10 +152,11 @@ func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) {
 
 		// Multithreaded image processing
 		job := mediaprocessor.MediaJob{
-			MediaConfig: p.MediaConfig,
-			FSConfig:    p.FSConfig,
-			S3Client:    p.S3Client,
-			InputFile:   file,
+			MediaConfig:    p.MediaConfig,
+			FSConfig:       p.FSConfig,
+			S3Client:       p.S3Client,
+			InputFile:      file,
+			MediaProcessor: p.MediaProcessor,
 		}
 		jobQueue <- job
 	}

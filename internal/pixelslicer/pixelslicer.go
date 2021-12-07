@@ -6,7 +6,8 @@ import (
 )
 
 type PixelSlicer struct {
-	S3Client    *s3.S3Client
-	FSConfig    *mediaprocessor.FSConfig
-	MediaConfig *mediaprocessor.MediaConfig
+	S3Client       *s3.S3Client
+	FSConfig       *mediaprocessor.FSConfig
+	MediaConfig    *mediaprocessor.MediaConfig
+	MediaProcessor *mediaprocessor.MediaProcessor
 }
