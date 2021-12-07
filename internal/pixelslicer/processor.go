@@ -93,13 +93,7 @@ func (p *PixelSlicer) processWatchDir(jobQueue chan<- mediaprocessor.MediaJob) {
 						continue
 					}
 
-					job := mediaprocessor.MediaJob{
-						MediaConfig:    p.MediaConfig,
-						FSConfig:       p.FSConfig,
-						S3Client:       p.S3Client,
-						InputFile:      inputFile,
-						MediaProcessor: p.MediaProcessor,
-					}
+					job := p.CreateJob(inputFile)
 					jobQueue <- job
 				}
 			case err := <-w.Error:
@@ -151,16 +145,21 @@ func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) {
 		// }
 
 		// Multithreaded image processing
-		job := mediaprocessor.MediaJob{
-			MediaConfig:    p.MediaConfig,
-			FSConfig:       p.FSConfig,
-			S3Client:       p.S3Client,
-			InputFile:      file,
-			MediaProcessor: p.MediaProcessor,
-		}
+		job := p.CreateJob(file)
 		jobQueue <- job
 	}
 
 	fmt.Println("Finished queueing jobs in ProcessOneShot")
 
+}
+
+// CreateJob creates a mediaprocessor.MediaJob for a given input file
+func (p *PixelSlicer) CreateJob(file *pixelio.InputFile) mediaprocessor.MediaJob {
+	return mediaprocessor.MediaJob{
+		FSConfig:       p.FSConfig,
+		MediaConfig:    p.MediaConfig,
+		MediaProcessor: p.MediaProcessor,
+		S3Client:       p.S3Client,
+		InputFile:      file,
+	}
 }
