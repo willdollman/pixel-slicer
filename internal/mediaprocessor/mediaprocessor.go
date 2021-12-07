@@ -30,7 +30,7 @@ func New() (mediaProcessor *MediaProcessor) {
 	// Return default media processors
 	// TODO: Allow media processors to be selected
 	return &MediaProcessor{
-		Image: &ImageBasic{},
+		Image: &ImageVips{},
 		Video: &VideoGoffmpeg{},
 	}
 }

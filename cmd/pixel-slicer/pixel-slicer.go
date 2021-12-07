@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli"
 	"github.com/willdollman/pixel-slicer/internal/config"
@@ -86,6 +87,10 @@ func main() {
 				MediaConfig:    conf.GetMediaConfig(),
 				MediaProcessor: mediaprocessor.New(),
 			}
+
+			// TODO: Implement this properly
+			vips.Startup(nil)
+			defer vips.Shutdown()
 
 			p.ProcessFiles(*conf)
 

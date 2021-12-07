@@ -15,6 +15,7 @@ import (
 	"github.com/nickalie/go-webpbin"
 )
 
+// ImageBasic is an ImageProcessor which uses a mix of Go image generation libraries
 type ImageBasic struct{}
 
 // ProcessImage processes a single image
