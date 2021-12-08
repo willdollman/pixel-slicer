@@ -31,7 +31,7 @@ func New() (mediaProcessor *MediaProcessor) {
 	// TODO: Allow media processors to be selected
 	return &MediaProcessor{
 		Image: &ImageVips{},
-		Video: &VideoGoffmpeg{},
+		Video: &VideoGotranscoder{},
 	}
 }
 

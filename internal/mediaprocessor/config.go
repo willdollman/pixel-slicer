@@ -60,8 +60,8 @@ const (
 	WebP    FileOutputType = "webp"
 	WebPBin FileOutputType = "webpbin.webp"
 	MP4     FileOutputType = "mp4"
-	VP9     FileOutputType = "webmx"
-	AV1     FileOutputType = "webm"
+	VP9     FileOutputType = "webm"
+	AV1     FileOutputType = "webmxxx"
 )
 
 // This *works*, but is a bit ugly. What if a new FileOutputType is added which doesn't have a type?
