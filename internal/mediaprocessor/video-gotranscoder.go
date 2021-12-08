@@ -9,6 +9,9 @@ import (
 	"github.com/floostack/transcoder/ffmpeg"
 )
 
+// VideoGotranscoder is based on github.com/floostack/transcoder.
+// This library allows custom ffmpeg commands to be passed, which permits two-pass
+// codecs such as VP9.
 type VideoGotranscoder struct{}
 
 func (v *VideoGotranscoder) Thumbnail(m *MediaJob, videoConfig VideoConfiguration) (err error) {

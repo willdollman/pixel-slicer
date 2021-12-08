@@ -7,6 +7,8 @@ import (
 	"github.com/xfrr/goffmpeg/transcoder"
 )
 
+// VideoGoffmpeg is based on github.com/xfrr/goffmpeg. This library is fairly robust, but
+// doesn't allow custom flags to be passed.
 type VideoGoffmpeg struct{}
 
 func (v *VideoGoffmpeg) Thumbnail(m *MediaJob, videoConfig VideoConfiguration) (err error) {
