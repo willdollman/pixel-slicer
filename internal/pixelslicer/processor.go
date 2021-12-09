@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/radovskyb/watcher"
+	"github.com/schollz/progressbar/v3"
 	"github.com/willdollman/pixel-slicer/internal/config"
 	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
@@ -20,14 +21,17 @@ func (p *PixelSlicer) ProcessFiles(conf config.ReadableConfig) {
 	numWorkers := runtime.NumCPU() / 2
 	fmt.Printf("Using %d threads\n", numWorkers)
 	jobQueue := make(chan mediaprocessor.MediaJob, 2048)
+
+	// Always queue any files which are already in the directory
+	numInitialJobs := p.processOneShot(jobQueue)
+	fmt.Printf("\nProcessing %d jobs in initial directory...\n\n", numInitialJobs)
+	bar := progressbar.New(numInitialJobs)
+
 	errc := make(chan error)
 	completion := make(chan bool)
 	for w := 1; w <= numWorkers; w++ {
-		go WorkerProcessMedia(jobQueue, errc, completion)
+		go WorkerProcessMedia(jobQueue, errc, completion, bar)
 	}
-
-	// Always queue any files which are already in the directory
-	p.processOneShot(jobQueue)
 
 	// We need to be careful that we don't try and process the same file twice - otherwise the workers will fight over it.
 	// So until we mitigate that, start monitoring the directory once processOneShot has completed
@@ -117,7 +121,7 @@ func (p *PixelSlicer) processWatchDir(jobQueue chan<- mediaprocessor.MediaJob) {
 
 // processOneShot crawls a directory tree looking for files of the correct type. Any matching
 // files are added to the jobQueue.
-func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) {
+func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) int {
 	fmt.Println("Processing directory", p.FSConfig.InputDir)
 
 	files, err := pixelio.EnumerateDirContents(p.FSConfig.InputDir)
@@ -136,11 +140,13 @@ func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) {
 	// log.Println("Will queue", len(filteredFiles), "jobs")
 
 	for i, file := range filteredFiles {
-		fmt.Printf("Queueing job '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles))
+		fmt.Printf("Queued '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles))
 		// Multithreaded image processing
 		job := p.CreateJob(file)
 		jobQueue <- job
 	}
+
+	return len(filteredFiles)
 }
 
 // CreateJob creates a mediaprocessor.MediaJob for a given input file

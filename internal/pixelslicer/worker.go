@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/schollz/progressbar/v3"
 	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 	"github.com/willdollman/pixel-slicer/internal/pixelio"
 )
@@ -13,7 +14,8 @@ import (
 // This is fine for a one-shot thing where you have a fixed number of jobs, but how
 // should it work with an unknown # jobs (and unknown delay between jobs)?
 // Also doesn't allow us to pass errors back up the caller.
-func WorkerProcessMedia(jobs <-chan mediaprocessor.MediaJob, errc chan<- error, completion chan<- bool) {
+// func WorkerProcessMedia(jobs <-chan mediaprocessor.MediaJob, errc chan<- error, completion chan<- bool) {
+func WorkerProcessMedia(jobs <-chan mediaprocessor.MediaJob, errc chan<- error, completion chan<- bool, progress *progressbar.ProgressBar) {
 	for j := range jobs {
 		mediaType := pixelio.GetMediaType(j.InputFile)
 
@@ -40,14 +42,17 @@ func WorkerProcessMedia(jobs <-chan mediaprocessor.MediaJob, errc chan<- error, 
 			errc <- errors.Wrapf(err, "Unable to process media, unknown media type '%s'", mediaType)
 			continue
 		}
-		fmt.Printf("Encoding '%s' took %.2fs\n", j.InputFile.Filename, time.Since(startTime).Seconds())
+		_ = startTime
+		// fmt.Printf("Encoding '%s' took %.2fs\n", j.InputFile.Filename, time.Since(startTime).Seconds())
 
 		postProcessStart := time.Now()
 		if err := jobPostProcess(j, filenames); err != nil {
 			errc <- errors.Wrap(err, "Error post-processing job")
 			continue
 		}
-		fmt.Printf("Post-processing '%s' took %.2fs\n", j.InputFile.Filename, time.Since(postProcessStart).Seconds())
+		_ = postProcessStart
+		// fmt.Printf("Post-processing '%s' took %.2fs\n", j.InputFile.Filename, time.Since(postProcessStart).Seconds())
+		progress.Add(1)
 	}
 	// When jobs is closed, signal completion to indicate this worker is finished
 	completion <- true
