@@ -60,6 +60,10 @@ func (m *MediaJob) CheckOutputDir() {
 
 // ProcessImage dispatches an image resize job to the configured ImageProcessor
 func (m *MediaJob) ProcessImage() (filenames []string, err error) {
+	if len(m.MediaConfig.ImageConfigurations) == 0 {
+		return
+	}
+
 	// Image encoding is more efficient if image file is read in and decoded once
 	// and output at multiple sizes, so this is performed in Resize()
 	m.CheckOutputDir()
@@ -68,6 +72,10 @@ func (m *MediaJob) ProcessImage() (filenames []string, err error) {
 
 // ProcessVideo dispatchse a video resize job to the configured VideoProcessor
 func (m *MediaJob) ProcessVideo() (filenames []string, errs error) {
+	if len(m.MediaConfig.VideoConfigurations) == 0 {
+		return
+	}
+
 	fmt.Println("Transcoding video, this may take a while...")
 
 	m.CheckOutputDir()
