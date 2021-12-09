@@ -73,22 +73,25 @@ func (v *VideoConfiguration) Validate() error {
 		return fmt.Errorf("video quality should be between 0 and 30")
 	}
 
-	mediaType := v.FileType.GetMediaType()
-
-	if mediaType == Unknown {
+	switch v.FileType.GetMediaType() {
+	case Unknown:
 		return fmt.Errorf("unknown media filetype '%s'", v.FileType)
-	}
-
-	if mediaType == Video {
+	case Image:
+		// TODO: Validate as an ImageConfiguration
+	case Video:
 		// Apply default codec
 		if v.Codec == "" {
-			v.Codec = defaultCodec[v.FileType]
+			v.Codec = defaultFiletypeCodec[v.FileType]
 		}
 
-		fmt.Printf("Codec is %s\n", v.Codec)
-
+		// Validate supplied codec
 		if err := v.Codec.Validate(); err != nil {
 			return err
+		}
+
+		// Validate codec-container pairing
+		if validCodecContainer[v.Codec] != v.FileType {
+			return fmt.Errorf("codec '%s' cannot be used with container '%s' (use %s)", v.Codec, v.FileType, validCodecContainer[v.Codec])
 		}
 	}
 
@@ -161,7 +164,16 @@ const (
 	Unknown MediaType = "unknown"
 )
 
-var defaultCodec = map[FileOutputType]VideoCodec{
+// defaultFiletypeCodec maps the default codec for each container format
+var defaultFiletypeCodec = map[FileOutputType]VideoCodec{
 	MP4:  H264,
 	WebM: VP9,
+}
+
+// validCodecContainer maps the valid containers for each codec
+var validCodecContainer = map[VideoCodec]FileOutputType{
+	H264: MP4,
+	H265: MP4,
+	VP9:  WebM,
+	AV1:  WebM,
 }

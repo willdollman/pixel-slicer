@@ -29,13 +29,13 @@ func (v *VideoGotranscoder) Transcode(m *MediaJob, videoConfig *VideoConfigurati
 	var opts ffmpeg.Options
 	var customOpts CustomOptions
 	var secondPass bool
-	switch videoConfig.FileType {
-	case "mp4":
+	switch videoConfig.Codec {
+	case H264:
 		opts, customOpts, secondPass = getH264Params(videoConfig)
-	case "webm":
-		opts, customOpts, secondPass = getWebmParams(m, videoConfig, 1)
+	case VP9:
+		opts, customOpts, secondPass = getVp9Params(m, videoConfig, 1)
 	default:
-		return fmt.Errorf("unknown video file type '%s'", videoConfig.FileType)
+		return fmt.Errorf("unknown codec type '%s'", videoConfig.Codec)
 	}
 
 	err = transcodeVideo(m, videoConfig, opts, customOpts)
@@ -45,9 +45,9 @@ func (v *VideoGotranscoder) Transcode(m *MediaJob, videoConfig *VideoConfigurati
 
 	// If using a 2-pass codec, perform the second pass
 	if secondPass {
-		switch videoConfig.FileType {
-		case "webm":
-			opts, customOpts, _ = getWebmParams(m, videoConfig, 2)
+		switch videoConfig.Codec {
+		case VP9:
+			opts, customOpts, _ = getVp9Params(m, videoConfig, 2)
 		default:
 			return fmt.Errorf("no second pass action configured for file type '%s'", videoConfig.FileType)
 		}
@@ -123,7 +123,7 @@ func getH264Params(c *VideoConfiguration) (opts ffmpeg.Options, optsCustom Custo
 	return opts, optsCustom, false
 }
 
-func getWebmParams(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Options, customOpts CustomOptions, twoPass bool) {
+func getVp9Params(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Options, customOpts CustomOptions, twoPass bool) {
 	videoCodec := "libvpx-vp9"
 	overwrite := true
 	videoFilter := fmt.Sprintf("scale=%d:-2", c.MaxWidth)
