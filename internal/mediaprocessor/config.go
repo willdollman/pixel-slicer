@@ -13,8 +13,8 @@ type FSConfig struct {
 
 // MediaConfig contains the image and video output parameters used when encoding media
 type MediaConfig struct {
-	ImageConfigurations []ImageConfiguration
-	VideoConfigurations []VideoConfiguration
+	ImageConfigurations []*ImageConfiguration
+	VideoConfigurations []*VideoConfiguration
 }
 
 type MediaConfiguration interface {
@@ -28,7 +28,7 @@ type ImageConfiguration struct {
 	FileType FileOutputType
 }
 
-func (i ImageConfiguration) OutputFileSuffix(simpleName bool) string {
+func (i *ImageConfiguration) OutputFileSuffix(simpleName bool) string {
 	if simpleName {
 		return fmt.Sprintf("-%d.%s", i.MaxWidth, string(i.FileType))
 	}
@@ -46,7 +46,7 @@ type VideoConfiguration struct {
 	FileType FileOutputType
 }
 
-func (i VideoConfiguration) OutputFileSuffix(simpleName bool) string {
+func (i *VideoConfiguration) OutputFileSuffix(simpleName bool) string {
 	if simpleName {
 		return fmt.Sprintf("-%d.%s", i.MaxWidth, string(i.FileType))
 	}

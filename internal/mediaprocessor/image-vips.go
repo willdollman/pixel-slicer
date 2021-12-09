@@ -63,7 +63,7 @@ func (i *ImageVips) Resize(m *MediaJob) (filenames []string, err error) {
 	return
 }
 
-func getJpgExportParams(i ImageConfiguration) *vips.ExportParams {
+func getJpgExportParams(i *ImageConfiguration) *vips.ExportParams {
 	ep := vips.NewDefaultJPEGExportParams()
 
 	ep.StripMetadata = true
@@ -73,7 +73,7 @@ func getJpgExportParams(i ImageConfiguration) *vips.ExportParams {
 	return ep
 }
 
-func getWebpExportParams(i ImageConfiguration) *vips.ExportParams {
+func getWebpExportParams(i *ImageConfiguration) *vips.ExportParams {
 	ep := vips.NewDefaultWEBPExportParams()
 
 	ep.StripMetadata = true

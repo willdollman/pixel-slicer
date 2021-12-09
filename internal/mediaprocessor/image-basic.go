@@ -12,7 +12,6 @@ import (
 
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
-	"github.com/nickalie/go-webpbin"
 )
 
 // ImageBasic is an ImageProcessor which uses a mix of Go image generation libraries
@@ -61,19 +60,6 @@ func (i *ImageBasic) Resize(m *MediaJob) (filenames []string, err error) {
 			if err = ioutil.WriteFile(outputFilepath, buf.Bytes(), 0664); err != nil {
 				log.Println(err)
 			}
-		case WebPBin:
-			fmt.Println("Encoding output file to WebP with webpbin")
-			f, err := os.Create(outputFilepath)
-			defer f.Close()
-			if err != nil {
-				log.Println(err)
-			}
-
-			wb := webpbin.Encoder{Quality: uint(imageConfig.Quality)}
-			if err = wb.Encode(f, resizedImage); err != nil {
-				log.Println(err)
-			}
-
 		default:
 			fmt.Println("Error: unknown output format:", imageConfig.FileType)
 			continue

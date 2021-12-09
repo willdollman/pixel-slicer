@@ -14,12 +14,12 @@ import (
 // codecs such as VP9.
 type VideoGotranscoder struct{}
 
-func (v *VideoGotranscoder) Thumbnail(m *MediaJob, videoConfig VideoConfiguration) (err error) {
+func (v *VideoGotranscoder) Thumbnail(m *MediaJob, videoConfig *VideoConfiguration) (err error) {
 
 	return
 }
 
-func (v *VideoGotranscoder) Transcode(m *MediaJob, videoConfig VideoConfiguration) (err error) {
+func (v *VideoGotranscoder) Transcode(m *MediaJob, videoConfig *VideoConfiguration) (err error) {
 	// Validate config - ensure maxWidth is even, which is required by some codecs
 	if videoConfig.MaxWidth%2 != 0 {
 		videoConfig.MaxWidth++
@@ -62,7 +62,7 @@ func (v *VideoGotranscoder) Transcode(m *MediaJob, videoConfig VideoConfiguratio
 }
 
 // transcodeVideo performs the actual video transcoding, based on passed configuration
-func transcodeVideo(m *MediaJob, videoConfig VideoConfiguration, opts ffmpeg.Options, customOpts CustomOptions) (err error) {
+func transcodeVideo(m *MediaJob, videoConfig *VideoConfiguration, opts ffmpeg.Options, customOpts CustomOptions) (err error) {
 	ffmpegConf := &ffmpeg.Config{
 		FfmpegBinPath:   "/usr/local/bin/ffmpeg",
 		FfprobeBinPath:  "/usr/local/bin/ffprobe",
@@ -95,7 +95,7 @@ func transcodeVideo(m *MediaJob, videoConfig VideoConfiguration, opts ffmpeg.Opt
 	return
 }
 
-func getH264Params(c VideoConfiguration) (opts ffmpeg.Options, optsCustom CustomOptions, twoPass bool) {
+func getH264Params(c *VideoConfiguration) (opts ffmpeg.Options, optsCustom CustomOptions, twoPass bool) {
 	videoCodec := "libx264"
 	overwrite := true
 	videoFilter := fmt.Sprintf("scale=%d:-2", c.MaxWidth)
@@ -123,7 +123,7 @@ func getH264Params(c VideoConfiguration) (opts ffmpeg.Options, optsCustom Custom
 	return opts, optsCustom, false
 }
 
-func getWebmParams(m *MediaJob, c VideoConfiguration, pass int) (opts ffmpeg.Options, customOpts CustomOptions, twoPass bool) {
+func getWebmParams(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Options, customOpts CustomOptions, twoPass bool) {
 	videoCodec := "libvpx-vp9"
 	overwrite := true
 	videoFilter := fmt.Sprintf("scale=%d:-2", c.MaxWidth)

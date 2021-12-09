@@ -21,8 +21,8 @@ type ReadableConfig struct {
 	ProcessedDir        string
 	Watch               bool
 	S3Config            s3.S3Config `mapstructure:"S3"`
-	ImageConfigurations []mediaprocessor.ImageConfiguration
-	VideoConfigurations []mediaprocessor.VideoConfiguration
+	ImageConfigurations []*mediaprocessor.ImageConfiguration
+	VideoConfigurations []*mediaprocessor.VideoConfiguration
 }
 
 func (c ReadableConfig) GetFSConfig() *mediaprocessor.FSConfig {

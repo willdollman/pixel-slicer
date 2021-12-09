@@ -11,7 +11,7 @@ import (
 // doesn't allow custom flags to be passed.
 type VideoGoffmpeg struct{}
 
-func (v *VideoGoffmpeg) Thumbnail(m *MediaJob, videoConfig VideoConfiguration) (err error) {
+func (v *VideoGoffmpeg) Thumbnail(m *MediaJob, videoConfig *VideoConfiguration) (err error) {
 	outputFilepath := m.OutputPath(videoConfig)
 
 	t := new(transcoder.Transcoder)
@@ -39,7 +39,7 @@ func (v *VideoGoffmpeg) Thumbnail(m *MediaJob, videoConfig VideoConfiguration) (
 	return
 }
 
-func (v *VideoGoffmpeg) Transcode(m *MediaJob, videoConfig VideoConfiguration) (err error) {
+func (v *VideoGoffmpeg) Transcode(m *MediaJob, videoConfig *VideoConfiguration) (err error) {
 	outputFilepath := m.OutputPath(videoConfig)
 
 	// Ensure maxWidth is even - required by some codecs

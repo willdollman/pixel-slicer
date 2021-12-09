@@ -17,8 +17,8 @@ type ImageProcessor interface {
 
 // VideoProcessor is an interface for types which can process videos
 type VideoProcessor interface {
-	Thumbnail(*MediaJob, VideoConfiguration) error
-	Transcode(*MediaJob, VideoConfiguration) error
+	Thumbnail(*MediaJob, *VideoConfiguration) error
+	Transcode(*MediaJob, *VideoConfiguration) error
 }
 
 type MediaProcessor struct {
