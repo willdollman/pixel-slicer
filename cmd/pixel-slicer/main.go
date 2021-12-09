@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -32,8 +31,6 @@ func main() {
 			// TODO: Allow num workers to be passed as a parameter
 		},
 		Action: func(c *cli.Context) error {
-			fmt.Println("Ready to go")
-
 			// Pass cli params to Viper
 			// TODO: Consider switching cli -> Cobra as an experiment
 			if inputDir := c.String("dir"); inputDir != "" {
@@ -59,7 +56,7 @@ func main() {
 			configPath := c.String("config")
 			conf, err := config.GetConfig(configPath)
 			if err != nil {
-				log.Fatal("Unable to read config file:", err)
+				log.Fatal("Unable to read config file: ", err)
 			}
 
 			// If requested, print config and exit
@@ -89,7 +86,8 @@ func main() {
 			}
 
 			// TODO: Implement this properly
-			vips.Startup(nil)
+			vips.LoggingSettings(nil, vips.LogLevelWarning)
+			vips.Startup(&vips.Config{})
 			defer vips.Shutdown()
 
 			p.ProcessFiles(*conf)

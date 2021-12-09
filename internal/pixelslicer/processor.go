@@ -18,7 +18,7 @@ import (
 func (p *PixelSlicer) ProcessFiles(conf config.ReadableConfig) {
 	// Create some workers, based on the number of CPU cores available
 	numWorkers := runtime.NumCPU() / 2
-	fmt.Println("Creating", numWorkers, "workers")
+	fmt.Printf("Using %d threads\n", numWorkers)
 	jobQueue := make(chan mediaprocessor.MediaJob, 2048)
 	errc := make(chan error)
 	completion := make(chan bool)
@@ -48,9 +48,9 @@ func (p *PixelSlicer) ProcessFiles(conf config.ReadableConfig) {
 	go func() {
 		for i := 1; i <= numWorkers; i++ {
 			_ = <-completion
-			fmt.Println("A worker has finished!")
+			// fmt.Println("A worker has finished!")
 		}
-		fmt.Println("All workers have finished - we can shut down!")
+		fmt.Println("\nAll jobs complete")
 		close(errc)
 	}()
 
@@ -132,25 +132,15 @@ func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) {
 	for mediaType, _ := range pixelio.TypeExtension() {
 		mediaFiles[mediaType] = pixelio.FilterFileType(files, mediaType)
 	}
-	fmt.Printf("Processing %d files, %d images, %d videos\n", len(files), len(mediaFiles["image"]), len(mediaFiles["video"]))
-
-	log.Println("Will queue", len(filteredFiles), "jobs")
+	fmt.Printf("Found %d files, %d images, %d videos\n\n", len(files), len(mediaFiles["image"]), len(mediaFiles["video"]))
+	// log.Println("Will queue", len(filteredFiles), "jobs")
 
 	for i, file := range filteredFiles {
 		fmt.Printf("Queueing job '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles))
-		// Classic image processing!
-		// if err := mediaprocessor.ProcessImage(conf, file); err != nil {
-		// 	log.Fatal("Error processing file", file)
-		// 	// Unsure why this needs to be fatal - we segfault for some reason otherwise...
-		// }
-
 		// Multithreaded image processing
 		job := p.CreateJob(file)
 		jobQueue <- job
 	}
-
-	fmt.Println("Finished queueing jobs in ProcessOneShot")
-
 }
 
 // CreateJob creates a mediaprocessor.MediaJob for a given input file

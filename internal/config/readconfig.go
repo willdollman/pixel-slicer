@@ -24,7 +24,7 @@ func GetConfig(configPath string) (*ReadableConfig, error) {
 
 	// Config location
 	if configPath != "" {
-		fmt.Println("Loading config from supplied path:", configPath)
+		fmt.Printf("Loading config from '%s'\n", configPath)
 		viper.SetConfigFile(configPath)
 	} else {
 		viper.SetConfigName("config")

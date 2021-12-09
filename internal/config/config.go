@@ -53,7 +53,6 @@ func (c ReadableConfig) ValidateConfig() (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s =? %s\n", inputDirFull, processedDirFull)
 	if inputDirFull == processedDirFull {
 		return fmt.Errorf("Input dir '%s' cannot match Processed dir '%s'", inputDirFull, processedDirFull)
 	}

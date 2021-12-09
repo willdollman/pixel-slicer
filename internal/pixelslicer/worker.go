@@ -40,14 +40,14 @@ func WorkerProcessMedia(jobs <-chan mediaprocessor.MediaJob, errc chan<- error, 
 			errc <- errors.Wrapf(err, "Unable to process media, unknown media type '%s'", mediaType)
 			continue
 		}
-		fmt.Printf("Encoding '%s' took %.2fs\n", j.InputFile.Filename, time.Now().Sub(startTime).Seconds())
+		fmt.Printf("Encoding '%s' took %.2fs\n", j.InputFile.Filename, time.Since(startTime).Seconds())
 
 		postProcessStart := time.Now()
 		if err := jobPostProcess(j, filenames); err != nil {
 			errc <- errors.Wrap(err, "Error post-processing job")
 			continue
 		}
-		fmt.Printf("Post-processing '%s' took %.2fs\n", j.InputFile.Filename, time.Now().Sub(postProcessStart).Seconds())
+		fmt.Printf("Post-processing '%s' took %.2fs\n", j.InputFile.Filename, time.Since(postProcessStart).Seconds())
 	}
 	// When jobs is closed, signal completion to indicate this worker is finished
 	completion <- true

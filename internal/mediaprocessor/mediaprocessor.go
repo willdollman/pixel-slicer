@@ -95,7 +95,7 @@ func (m *MediaJob) ProcessVideo() (filenames []string, errs error) {
 			err = fmt.Errorf("configuration contains unknown media type: %s", videoConfig.FileType)
 		}
 
-		fmt.Printf("Encoding took %.2fs\n", time.Now().Sub(encodeStartTime).Seconds())
+		fmt.Printf("Encoding took %.2fs\n", time.Since(encodeStartTime).Seconds())
 
 		if err == nil {
 			outputFilepath := m.OutputPath(videoConfig)
