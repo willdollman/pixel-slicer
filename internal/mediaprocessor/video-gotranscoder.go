@@ -15,6 +15,25 @@ import (
 type VideoGotranscoder struct{}
 
 func (v *VideoGotranscoder) Thumbnail(m *MediaJob, videoConfig *VideoConfiguration) (err error) {
+	vFrames := 1
+	skipAudio := true
+	seekTime := "0"
+	videoFilter := fmt.Sprintf("scale=%d:-2", videoConfig.MaxWidth)
+
+	opts := ffmpeg.Options{
+		Vframes:     &vFrames,
+		SkipAudio:   &skipAudio,
+		SeekTime:    &seekTime,
+		VideoFilter: &videoFilter,
+	}
+	customOpts := CustomOptions{
+		QScaleVideo: &videoConfig.Quality,
+	}
+
+	err = transcodeVideo(m, videoConfig, opts, customOpts)
+	if err != nil {
+		return err
+	}
 
 	return
 }
@@ -291,6 +310,7 @@ type CustomOptions struct {
 	PassLogFile *string `flag:"-passlogfile"`
 	Crf         *int    `flag:"-crf"`      // Work around bug with *uint32 in ffmpeg.Options
 	CpuUsed     *int    `flag:"-cpu-used"` // Used with AV1 codec
+	QScaleVideo *int    `flag:"-qscale:v"` // Used for thumbnails
 }
 
 func (opts CustomOptions) GetStrArguments() []string {
