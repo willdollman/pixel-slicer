@@ -18,6 +18,7 @@ type MediaConfig struct {
 }
 
 type MediaConfiguration interface {
+	Validate() error              // Return an error if the supplied media configuration is invalid
 	OutputFileSuffix(bool) string // Return the file suffix for a given media configuration. e.g. -100px.jpg
 }
 
@@ -26,6 +27,25 @@ type ImageConfiguration struct {
 	MaxWidth int
 	Quality  int
 	FileType FileOutputType
+}
+
+func (i *ImageConfiguration) Validate() error {
+	if i.Quality > 100 || i.Quality <= 0 {
+		return fmt.Errorf("image quality should be between 0 and 100 (%d)", i.Quality)
+	}
+
+	switch i.FileType.GetMediaType() {
+	case Video:
+		return fmt.Errorf("image configuration cannot accept video FileType (%s)", i.FileType)
+	case Unknown:
+		return fmt.Errorf("unknown media filetype '%s'", i.FileType)
+
+	}
+	if i.FileType.GetMediaType() == Unknown {
+		return fmt.Errorf("unknown media type '%s'", i.FileType)
+	}
+
+	return nil
 }
 
 func (i *ImageConfiguration) OutputFileSuffix(simpleName bool) string {
@@ -44,24 +64,59 @@ type VideoConfiguration struct {
 	Quality  int
 	Preset   string
 	FileType FileOutputType
+	Codec    VideoCodec
 }
 
-func (i *VideoConfiguration) OutputFileSuffix(simpleName bool) string {
-	if simpleName {
-		return fmt.Sprintf("-%d.%s", i.MaxWidth, string(i.FileType))
+// Validate validates a VideoConfiguration
+func (v *VideoConfiguration) Validate() error {
+	if v.Quality <= 0 || v.Quality > 30 {
+		return fmt.Errorf("video quality should be between 0 and 30")
 	}
-	return fmt.Sprintf("-%d-q%d-p%s.%s", i.MaxWidth, i.Quality, i.Preset, string(i.FileType))
+
+	mediaType := v.FileType.GetMediaType()
+
+	if mediaType == Unknown {
+		return fmt.Errorf("unknown media filetype '%s'", v.FileType)
+	}
+
+	if mediaType == Video {
+		// Apply default codec
+		if v.Codec == "" {
+			v.Codec = defaultCodec[v.FileType]
+		}
+
+		fmt.Printf("Codec is %s\n", v.Codec)
+
+		if err := v.Codec.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Ensure maxWidth is even - required by some codecs
+	if v.MaxWidth%2 != 0 {
+		return fmt.Errorf("video width '%d' should be even (required by most codecs)", v.MaxWidth)
+	}
+
+	return nil
 }
 
+func (v *VideoConfiguration) OutputFileSuffix(simpleName bool) string {
+	if simpleName {
+		return fmt.Sprintf("-%d.%s", v.MaxWidth, string(v.FileType))
+	}
+	return fmt.Sprintf("-%d-q%d-p%s.%s.%s", v.MaxWidth, v.Quality, v.Preset, v.Codec, v.FileType)
+}
+
+// FileOutputType is the file extension of the output media file.
+// For images, this represents the image format.
+// For videos, this represents the container format.
 type FileOutputType string
 
 const (
-	JPG     FileOutputType = "jpg"
-	WebP    FileOutputType = "webp"
-	WebPBin FileOutputType = "webpbin.webp"
-	MP4     FileOutputType = "mp4"
-	VP9     FileOutputType = "webm"
-	AV1     FileOutputType = "webmxxx"
+	JPG  FileOutputType = "jpg"
+	WebP FileOutputType = "webp"
+	MP4  FileOutputType = "mp4"
+	WebM FileOutputType = "webm"
 )
 
 // This *works*, but is a bit ugly. What if a new FileOutputType is added which doesn't have a type?
@@ -69,12 +124,31 @@ const (
 // GetMediaType returns the MediaType of a given FileOutputType
 func (f FileOutputType) GetMediaType() MediaType {
 	switch f {
-	case JPG, WebP, WebPBin:
+	case JPG, WebP:
 		return Image
-	case MP4, VP9, AV1:
+	case MP4, WebM:
 		return Video
 	default:
 		return Unknown
+	}
+}
+
+// VideoCodec represents the codec used to encode a video file, as part of a VideoConfiguration
+type VideoCodec string
+
+const (
+	H264 VideoCodec = "h264"
+	H265 VideoCodec = "h265"
+	VP9  VideoCodec = "vp9"
+	AV1  VideoCodec = "av1"
+)
+
+func (c VideoCodec) Validate() error {
+	switch c {
+	case H264, H265, VP9, AV1:
+		return nil
+	default:
+		return fmt.Errorf("unknown video codec '%s'", c)
 	}
 }
 
@@ -86,3 +160,8 @@ const (
 	Video   MediaType = "video"
 	Unknown MediaType = "unknown"
 )
+
+var defaultCodec = map[FileOutputType]VideoCodec{
+	MP4:  H264,
+	WebM: VP9,
+}

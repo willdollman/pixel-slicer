@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -46,6 +47,18 @@ func GetConfig(configPath string) (*ReadableConfig, error) {
 	if err := viper.Unmarshal(&appConfig); err != nil {
 		log.Fatal("Error unmarshalling config")
 		return nil, err
+	}
+
+	// Validate media configs
+	for _, c := range appConfig.ImageConfigurations {
+		if err := c.Validate(); err != nil {
+			return nil, errors.Wrap(err, "invalid image configuration")
+		}
+	}
+	for _, c := range appConfig.VideoConfigurations {
+		if err := c.Validate(); err != nil {
+			return nil, errors.Wrap(err, "invalid video configuration")
+		}
 	}
 
 	return &appConfig, nil
