@@ -32,8 +32,12 @@ func (v *VideoGotranscoder) Transcode(m *MediaJob, videoConfig *VideoConfigurati
 	switch videoConfig.Codec {
 	case H264:
 		opts, customOpts, secondPass = getH264Params(videoConfig)
+	case H265:
+		opts, customOpts, secondPass = getH265Params(videoConfig)
 	case VP9:
 		opts, customOpts, secondPass = getVp9Params(m, videoConfig, 1)
+	case AV1:
+		opts, customOpts, secondPass = getAv1Params(m, videoConfig, 1)
 	default:
 		return fmt.Errorf("unknown codec type '%s'", videoConfig.Codec)
 	}
@@ -48,6 +52,8 @@ func (v *VideoGotranscoder) Transcode(m *MediaJob, videoConfig *VideoConfigurati
 		switch videoConfig.Codec {
 		case VP9:
 			opts, customOpts, _ = getVp9Params(m, videoConfig, 2)
+		case AV1:
+			opts, customOpts, _ = getAv1Params(m, videoConfig, 2)
 		default:
 			return fmt.Errorf("no second pass action configured for file type '%s'", videoConfig.FileType)
 		}
@@ -88,13 +94,21 @@ func transcodeVideo(m *MediaJob, videoConfig *VideoConfiguration, opts ffmpeg.Op
 		log.Fatal(err)
 	}
 
-	for msg := range progress {
-		log.Printf("%+v", msg)
+	for range progress {
+		// for msg := range progress {
+		// log.Printf("%+v", msg)
 	}
 
 	return
 }
 
+/*
+getH264Params provides ffmpeg parameters for h264 encoding.
+https://trac.ffmpeg.org/wiki/Encode/H.264
+
+	* 1-pass encoding
+	* Preset can be selected (default 'slow')
+*/
 func getH264Params(c *VideoConfiguration) (opts ffmpeg.Options, optsCustom CustomOptions, twoPass bool) {
 	videoCodec := "libx264"
 	overwrite := true
@@ -123,6 +137,46 @@ func getH264Params(c *VideoConfiguration) (opts ffmpeg.Options, optsCustom Custo
 	return opts, optsCustom, false
 }
 
+/*
+getH265Params provides ffmpeg parameters for h265 encoding.
+https://trac.ffmpeg.org/wiki/Encode/H.265
+
+	* 1-pass encoding
+	* Preset can be selected (default 'slow')
+*/
+func getH265Params(c *VideoConfiguration) (opts ffmpeg.Options, optsCustom CustomOptions, twoPass bool) {
+	videoCodec := "libx265"
+	overwrite := true
+	videoFilter := fmt.Sprintf("scale=%d:-2", c.MaxWidth)
+	movFlags := "+faststart"
+	// crf := uint32(c.Quality) // There's a bug with uint32 types in transcode
+
+	opts = ffmpeg.Options{
+		// OutputFormat: &outputFormat,
+		Overwrite:   &overwrite,
+		VideoCodec:  &videoCodec,
+		VideoFilter: &videoFilter,
+		MovFlags:    &movFlags,
+		Preset:      &c.Preset,
+		// Crf:          &crf, // Currently not working
+	}
+
+	crf := c.Quality
+
+	optsCustom = CustomOptions{
+		Crf: &crf,
+	}
+
+	return opts, optsCustom, false
+}
+
+/*
+getVp9Params provides ffmpeg parameters for VP9 encoding.
+https://trac.ffmpeg.org/wiki/Encode/VP9
+
+	* 2-pass encoding recommended
+	* TODO: Does -b:v 0 need to be set?
+*/
 func getVp9Params(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Options, customOpts CustomOptions, twoPass bool) {
 	videoCodec := "libvpx-vp9"
 	overwrite := true
@@ -170,11 +224,73 @@ func getVp9Params(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Opt
 	return opts, customOpts, true
 }
 
+/*
+getAv1Params provides ffmpeg parameters for AV1 encoding.
+https://trac.ffmpeg.org/wiki/Encode/AV1
+
+	* Performs 2-pass encoding as this may help encoding efficiency - need to verify
+	* -cpu-used 8 minimises CPU load at the slight expense of quality; worth it as AV1 is expensive
+	* libopus audio codec
+*/
+func getAv1Params(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Options, customOpts CustomOptions, twoPass bool) {
+	videoCodec := "libaom-av1"
+	audioCodec := "libopus"
+	overwrite := true
+	videoFilter := fmt.Sprintf("scale=%d:-2", c.MaxWidth)
+
+	if pass == 1 {
+		skipAudio := true
+
+		// First pass
+		opts = ffmpeg.Options{
+			VideoCodec:  &videoCodec,
+			Overwrite:   &overwrite,
+			VideoFilter: &videoFilter,
+			SkipAudio:   &skipAudio,
+		}
+
+		pass := 1
+		passLogFile := m.OutputPath(c) + ".log"
+		cpuUsed := 8
+
+		customOpts = CustomOptions{
+			Pass:        &pass,
+			PassLogFile: &passLogFile,
+			Crf:         &c.Quality,
+			CpuUsed:     &cpuUsed,
+		}
+	} else if pass == 2 {
+		// Second pass
+		opts = ffmpeg.Options{
+			VideoCodec:  &videoCodec,
+			AudioCodec:  &audioCodec,
+			Overwrite:   &overwrite,
+			VideoFilter: &videoFilter,
+		}
+
+		pass := 2
+		passLogFile := m.OutputPath(c) + ".log"
+		cpuUsed := 8 // TODO: Tune?
+
+		customOpts = CustomOptions{
+			Pass:        &pass,
+			PassLogFile: &passLogFile,
+			Crf:         &c.Quality,
+			CpuUsed:     &cpuUsed,
+		}
+	} else {
+		log.Fatalf("Unknown pass number")
+	}
+
+	return opts, customOpts, true
+}
+
 // TODO: Submit PR
 type CustomOptions struct {
 	Pass        *int    `flag:"-pass"`
 	PassLogFile *string `flag:"-passlogfile"`
-	Crf         *int    `flag:"-crf"` // Work around bug with *uint32 in ffmpeg.Options
+	Crf         *int    `flag:"-crf"`      // Work around bug with *uint32 in ffmpeg.Options
+	CpuUsed     *int    `flag:"-cpu-used"` // Used with AV1 codec
 }
 
 func (opts CustomOptions) GetStrArguments() []string {

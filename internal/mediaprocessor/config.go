@@ -73,6 +73,11 @@ func (v *VideoConfiguration) Validate() error {
 		return fmt.Errorf("video quality should be between 0 and 30")
 	}
 
+	// Apply default video container if applicable
+	if v.FileType == "" && validCodecContainer[v.Codec] != "" {
+		v.FileType = validCodecContainer[v.Codec]
+	}
+
 	switch v.FileType.GetMediaType() {
 	case Unknown:
 		return fmt.Errorf("unknown media filetype '%s'", v.FileType)
@@ -93,6 +98,10 @@ func (v *VideoConfiguration) Validate() error {
 		if validCodecContainer[v.Codec] != v.FileType {
 			return fmt.Errorf("codec '%s' cannot be used with container '%s' (use %s)", v.Codec, v.FileType, validCodecContainer[v.Codec])
 		}
+
+		if v.Codec == H264 && v.Preset == "" {
+			v.Preset = "slow"
+		}
 	}
 
 	// Ensure maxWidth is even - required by some codecs
@@ -104,6 +113,10 @@ func (v *VideoConfiguration) Validate() error {
 }
 
 func (v *VideoConfiguration) OutputFileSuffix(simpleName bool) string {
+	if v.FileType.GetMediaType() == Image {
+		return fmt.Sprintf(".%s", v.FileType)
+	}
+
 	if simpleName {
 		return fmt.Sprintf("-%d.%s", v.MaxWidth, string(v.FileType))
 	}
