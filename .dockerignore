@@ -1,0 +1,5 @@
+# Example input directories
+example-*/
+# Default output directories
+output/
+output-*/
