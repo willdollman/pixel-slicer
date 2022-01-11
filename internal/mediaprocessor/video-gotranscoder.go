@@ -194,7 +194,7 @@ getVp9Params provides ffmpeg parameters for VP9 encoding.
 https://trac.ffmpeg.org/wiki/Encode/VP9
 
 	* 2-pass encoding recommended
-	* TODO: Does -b:v 0 need to be set?
+	* Does -b:v 0 need to be set?
 */
 func getVp9Params(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Options, customOpts CustomOptions, twoPass bool) {
 	videoCodec := "libvpx-vp9"
@@ -289,7 +289,7 @@ func getAv1Params(m *MediaJob, c *VideoConfiguration, pass int) (opts ffmpeg.Opt
 
 		pass := 2
 		passLogFile := m.OutputPath(c) + ".log"
-		cpuUsed := 8 // TODO: Tune?
+		cpuUsed := 8 // Fastest encoding; still very slow
 
 		customOpts = CustomOptions{
 			Pass:        &pass,

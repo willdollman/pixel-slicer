@@ -38,8 +38,8 @@ func New() (mediaProcessor *MediaProcessor) {
 // MediaJob represents an encoding job to perform, and contains types representing the
 // target file, where the files should be written, encoding settings, and which processor to use.
 type MediaJob struct {
-	MediaConfig    *MediaConfig // TODO: Might be a bit verbose
-	FSConfig       *FSConfig    // TODO: Might be a bit verbose
+	MediaConfig    *MediaConfig
+	FSConfig       *FSConfig
 	S3Client       *s3.S3Client
 	InputFile      *pixelio.InputFile
 	MediaProcessor *MediaProcessor

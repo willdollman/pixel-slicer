@@ -70,8 +70,8 @@ type VideoConfiguration struct {
 
 // Validate validates a VideoConfiguration
 func (v *VideoConfiguration) Validate() error {
-	if v.Quality <= 0 || v.Quality > 30 {
-		return fmt.Errorf("video quality should be between 0 and 30")
+	if v.Quality <= 0 || v.Quality > 100 {
+		return fmt.Errorf("video quality should be between 0 and 100")
 	}
 
 	// Apply default video container if applicable

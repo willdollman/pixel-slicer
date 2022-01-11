@@ -1,7 +1,6 @@
 package mediaprocessor
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 
@@ -18,8 +17,6 @@ type ImageVips struct{}
 var STARTEDLIBVIPS bool
 
 func (i *ImageVips) Resize(m *MediaJob) (filenames []string, err error) {
-	fmt.Printf("Hoping to resize some images here...\n")
-
 	imgOrig, err := vips.NewImageFromFile(m.InputFile.Path)
 	if err != nil {
 		log.Fatalf("Could not load image")
@@ -37,7 +34,6 @@ func (i *ImageVips) Resize(m *MediaJob) (filenames []string, err error) {
 			log.Fatalf("Could not resize image")
 		}
 
-		// TODO: JPG vs webm vs ...
 		var ep *vips.ExportParams
 		switch imageConfig.FileType {
 		case JPG:
@@ -68,7 +64,6 @@ func getJpgExportParams(i *ImageConfiguration) *vips.ExportParams {
 
 	ep.StripMetadata = true
 	ep.Quality = i.Quality
-	// TODO: anything else?
 
 	return ep
 }

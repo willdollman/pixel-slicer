@@ -29,7 +29,7 @@ func WorkerProcessMedia(jobs <-chan mediaprocessor.MediaJob, errc chan<- error, 
 		case "image":
 			filenames, err = j.ProcessImage()
 			if err != nil {
-				errc <- errors.Wrap(err, "Error processing image") // TODO: does this wrap add value?
+				errc <- errors.Wrap(err, "Error processing image")
 				continue
 			}
 		case "video":
@@ -60,13 +60,6 @@ func WorkerProcessMedia(jobs <-chan mediaprocessor.MediaJob, errc chan<- error, 
 
 // Perform any post-processing tasks after a job has been processed
 func jobPostProcess(job mediaprocessor.MediaJob, filenames []string) error {
-	// TODO: May not want to resized files to remain locally, so could remove them after moving
-
-	// TODO: This should be updated to use concurrency in some way. Currently just uploads files sequentially.
-	// Could upload files in parallel (make the most use of the network bandwidth) <- this option, I think
-	// Or could just shove the jobs into the background to free up the processing thread <- but then what if there's an error?
-	// Equally, multiple workers mean we'll already be uploading in parallel - too much could actually slow it down
-
 	for _, filename := range filenames {
 		filekey := pixelio.StripFileOutputDir(job.FSConfig.OutputDir, filename)
 
