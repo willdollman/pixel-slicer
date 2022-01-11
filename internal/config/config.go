@@ -20,6 +20,7 @@ type ReadableConfig struct {
 	MoveProcessed       bool
 	ProcessedDir        string
 	Watch               bool
+	Workers             int
 	S3Config            s3.S3Config `mapstructure:"S3"`
 	ImageConfigurations []*mediaprocessor.ImageConfiguration
 	VideoConfigurations []*mediaprocessor.VideoConfiguration
@@ -32,6 +33,7 @@ func (c ReadableConfig) GetFSConfig() *mediaprocessor.FSConfig {
 		MoveProcessed: c.MoveProcessed,
 		ProcessedDir:  c.ProcessedDir,
 		Watch:         c.Watch,
+		Workers:       c.Workers,
 	}
 }
 

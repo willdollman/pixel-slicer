@@ -9,6 +9,7 @@ type FSConfig struct {
 	MoveProcessed bool
 	ProcessedDir  string
 	Watch         bool
+	Workers       int
 }
 
 // MediaConfig contains the image and video output parameters used when encoding media

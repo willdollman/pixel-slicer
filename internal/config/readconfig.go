@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -15,6 +16,7 @@ func GetConfig(configPath string) (*ReadableConfig, error) {
 	viper.SetDefault("ProcessedDir", "processed")
 	viper.SetDefault("MoveProcessed", false)
 	viper.SetDefault("Watch", false)
+	viper.SetDefault("Workers", runtime.NumCPU()/2) // Base worker threads on number of CPU cores available
 	// Default S3 configurations
 	viper.SetDefault("S3Enabled", false)
 	viper.SetDefault("S3", map[string]string{"Endoint": "", "Region": "", "Bucket": "pixelslicer"})

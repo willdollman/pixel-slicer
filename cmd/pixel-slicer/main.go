@@ -28,11 +28,11 @@ func main() {
 			&cli.BoolFlag{Name: "sample-config", Usage: "Write a sample config file to example-config.yaml, including any supplied modifications"},
 			&cli.BoolFlag{Name: "print-config", Usage: "Print the current configuration and exit"},
 			&cli.BoolFlag{Name: "watch", Usage: "Watch the input directory for new files"},
-			// TODO: Allow num workers to be passed as a parameter
+			&cli.IntFlag{Name: "workers", Usage: "Number of workers to use for meda processing"},
 		},
 		Action: func(c *cli.Context) error {
 			// Pass cli params to Viper
-			// TODO: Consider switching cli -> Cobra as an experiment
+			// TODO: Consider switching cli -> Cobra
 			if inputDir := c.String("dir"); inputDir != "" {
 				viper.Set("InputDir", inputDir)
 			}
@@ -47,6 +47,9 @@ func main() {
 			}
 			if watch := c.Bool("watch"); watch {
 				viper.Set("Watch", watch)
+			}
+			if workers := c.Bool("workers"); workers {
+				viper.Set("Workers", workers)
 			}
 			if s3Enabled := c.Bool("enable-s3"); s3Enabled {
 				viper.Set("S3Enabled.Enabled", s3Enabled) // TODO: Does this work after changing ReadableConfig?
@@ -85,7 +88,7 @@ func main() {
 				MediaProcessor: mediaprocessor.New(),
 			}
 
-			// TODO: Implement this properly
+			// TODO: Only load libvips when image-libvips module is used
 			vips.LoggingSettings(nil, vips.LogLevelWarning)
 			vips.Startup(&vips.Config{})
 			defer vips.Shutdown()

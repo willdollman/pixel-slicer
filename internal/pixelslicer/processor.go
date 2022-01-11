@@ -3,7 +3,6 @@ package pixelslicer
 import (
 	"fmt"
 	"log"
-	"runtime"
 	"time"
 
 	"github.com/radovskyb/watcher"
@@ -17,19 +16,17 @@ import (
 // It spawns a worker pool, and then calls filesystem-observing functions to queue jobs for those workers.
 // It then monitors the workers, and shuts down when required.
 func (p *PixelSlicer) ProcessFiles(conf config.ReadableConfig) {
-	// Create some workers, based on the number of CPU cores available
-	numWorkers := runtime.NumCPU() / 2
-	fmt.Printf("Using %d threads\n", numWorkers)
+	fmt.Printf("Using %d threads\n", conf.Workers)
 	jobQueue := make(chan mediaprocessor.MediaJob, 2048)
 
 	// Always queue any files which are already in the directory
-	numInitialJobs := p.processOneShot(jobQueue)
+	numInitialJobs := p.processOneShot(jobQueue) // TODO: multiply by number of render types?
 	fmt.Printf("\nProcessing %d jobs in initial directory...\n\n", numInitialJobs)
 	bar := progressbar.New(numInitialJobs)
 
 	errc := make(chan error)
 	completion := make(chan bool)
-	for w := 1; w <= numWorkers; w++ {
+	for w := 1; w <= conf.Workers; w++ {
 		go WorkerProcessMedia(jobQueue, errc, completion, bar)
 	}
 
@@ -50,7 +47,7 @@ func (p *PixelSlicer) ProcessFiles(conf config.ReadableConfig) {
 	// If jobs is closed, workers will send completion to indicate they're out of tasks.
 	// Count out the workers so we can terminate cleanly.
 	go func() {
-		for i := 1; i <= numWorkers; i++ {
+		for i := 1; i <= conf.Workers; i++ {
 			_ = <-completion
 			// fmt.Println("A worker has finished!")
 		}
@@ -73,7 +70,7 @@ func (p *PixelSlicer) processWatchDir(jobQueue chan<- mediaprocessor.MediaJob) {
 	w := watcher.New()
 
 	w.FilterOps(watcher.Create)
-	// TODO: What about rename? - if a file is renamed before it can be processed
+	// TODO: Handle case where a file is renamed before it can be processed
 	// w.FilterOps(watcher.Create, watcher.Rename)
 
 	go func() {
