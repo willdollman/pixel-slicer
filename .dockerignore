@@ -1,5 +1,12 @@
 # Example input directories
 example-*/
+
 # Default output directories
 output/
 output-*/
+
+# Misc files
+*.md
+*.yaml
+.*
+Dockerfile
