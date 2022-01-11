@@ -1,16 +1,13 @@
 package mediaprocessor
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"image/jpeg"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
 
-	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
 )
 
@@ -52,14 +49,15 @@ func (i *ImageBasic) Resize(m *MediaJob) (filenames []string, err error) {
 			fmt.Println("Encoding output file to JPG")
 			jpeg.Encode(outfh, resizedImage, &jpeg.Options{Quality: imageConfig.Quality})
 		case WebP:
-			fmt.Println("Encoding output file to WebP with chai2010")
-			var buf bytes.Buffer
-			if err = webp.Encode(&buf, resizedImage, &webp.Options{Quality: float32(imageConfig.Quality)}); err != nil {
-				log.Println(err)
-			}
-			if err = ioutil.WriteFile(outputFilepath, buf.Bytes(), 0664); err != nil {
-				log.Println(err)
-			}
+			fmt.Println("WebP output disabled")
+			// fmt.Println("Encoding output file to WebP with chai2010")
+			// var buf bytes.Buffer
+			// if err = webp.Encode(&buf, resizedImage, &webp.Options{Quality: float32(imageConfig.Quality)}); err != nil {
+			// 	log.Println(err)
+			// }
+			// if err = ioutil.WriteFile(outputFilepath, buf.Bytes(), 0664); err != nil {
+			// 	log.Println(err)
+			// }
 		default:
 			fmt.Println("Error: unknown output format:", imageConfig.FileType)
 			continue
