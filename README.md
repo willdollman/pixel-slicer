@@ -13,20 +13,19 @@ pixel-slicer's goal is to help you optimise media-heavy websites by encoding res
 It was written to allow high performance sites packed with media to be served on a shoestring budget with pro performance - I wrote pixel-slicer as a backend processor for my own static [photolog site](https://photos.dollman.org/).
 
 ## Getting Started
-
 ### Docker
 
+The easiest way to run pixel-slicer is via Docker, which includes all required media encoding libraries:
+
+```
+git clone git@github.com:willdollman/pixel-slicer.git
+docker build -t px:latest .
+...
+```
+
+### Downloading binaries and building from source
+
 pixel-slicer relies on various media encoding libraries, which must be installed before it can use them.
-
-The fastest way to get started with pixel-slicer is to use the prebuilt Docker container:
-
-```
-# TODO
-```
-
-### Building from source
-
-Alternatively, install the [libvips](https://github.com/libvips/libvips) and [FFmpeg](https://github.com/FFmpeg/FFmpeg) packages for your operating system:
 
 ```
 # macOS (using Homebrew)
@@ -36,17 +35,22 @@ brew install vips ffmpeg
 apt-get install libvips-dev ffmpeg
 ```
 
-then either use `go get`, or run from source:
+Once installed, you can download the pre-built binaries:
+
+> TODO: Create pre-built binaries
+
+Alternatively, if you have Go installed you can download and build from source:
 
 ```
+go install github.com/willdollman/pixel-slicer/cmd/...@latest
+
+# Or clone and run
 git clone git@github.com:willdollman/pixel-slicer.git
 cd pixel-slicer
 go run cmd/pixel-slicer/main.go
 ```
 
-### Binaries
-
-**TODO:** Build binaries
+If installing from source fails on macOS, try setting `CGO_CFLAGS_ALLOW=-Xpreprocessor` to work around an issue in the macOS libvips library.
 
 ## Configuration
 
