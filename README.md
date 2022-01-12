@@ -18,9 +18,10 @@ It was written to allow high performance sites packed with media to be served on
 The easiest way to run pixel-slicer is via Docker, which includes all required media encoding libraries:
 
 ```
-git clone git@github.com:willdollman/pixel-slicer.git
-docker build -t px:latest .
-...
+docker pull ghcr.io/willdollman/pixel-slicer:master
+
+# Run pixel-slicer against a directory of media
+docker run -v ~/input-images:/input -v ~/output:/output ghcr.io/willdollman/pixel-slicer:master
 ```
 
 ### Downloading binaries and building from source
@@ -35,11 +36,7 @@ brew install vips ffmpeg
 apt-get install libvips-dev ffmpeg
 ```
 
-Once installed, you can download the pre-built binaries:
-
-> TODO: Create pre-built binaries
-
-Alternatively, if you have Go installed you can download and build from source:
+Then with Go installed you can download and build from source:
 
 ```
 go install github.com/willdollman/pixel-slicer/cmd/...@latest
