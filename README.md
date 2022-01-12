@@ -7,9 +7,9 @@ A fast and multithreaded media encoder built for the web.
 pixel-slicer is an image and video encoder written in [Go](https://go.dev/).
 It's designed to optimise your web media for every possible browser and screen size, upload your media wherever it needs to go, and to do it all as quickly as possible.
 
-pixel-slicer uses the extremely efficient [libvips](https://github.com/libvips/libvips) for image encoding and [FFmpeg](https://github.com/FFmpeg/FFmpeg) for video encoding, though it's designed to be extendable and can work with any media encoder.
+pixel-slicer uses the extremely efficient [libvips](https://github.com/libvips/libvips) for image encoding and [FFmpeg](https://github.com/FFmpeg/FFmpeg) for video encoding, though it's extendable and can work with any media encoder.
 
-pixel-slicer's goal is to help you optimise media-heavy websites by encoding resources at multiple resolutions and formats, so the smallest file can be served to each client tuned for screen size and supported formats.
+pixel-slicer's goal is to help you optimise media-heavy websites by encoding resources at multiple resolutions and formats, so the most optimised file can be served to each client tuned for their screen size and supported formats.
 It was written to allow high performance sites packed with media to be served on a shoestring budget with pro performance - I wrote pixel-slicer as a backend processor for my own static [photolog site](https://photos.dollman.org/).
 
 ## Getting Started
@@ -20,13 +20,14 @@ The easiest way to run pixel-slicer is via Docker, which includes all required m
 ```
 docker pull ghcr.io/willdollman/pixel-slicer:master
 
-# Run pixel-slicer against a directory of media
+# Resize all media files in ~/input-images, and output to ~/output
 docker run -v ~/input-images:/input -v ~/output:/output ghcr.io/willdollman/pixel-slicer:master
 ```
 
-### Downloading binaries and building from source
+See [#Configuration](#configuration) for how to select image and video sizes and their output formats.
+### Building from source
 
-pixel-slicer relies on various media encoding libraries, which must be installed before it can use them.
+pixel-slicer relies on various media encoding libraries, which must be installed before running:
 
 ```
 # macOS (using Homebrew)
@@ -42,8 +43,7 @@ Then with Go installed you can download and build from source:
 go install github.com/willdollman/pixel-slicer/cmd/...@latest
 
 # Or clone and run
-git clone git@github.com:willdollman/pixel-slicer.git
-cd pixel-slicer
+git clone git@github.com:willdollman/pixel-slicer.git && cd pixel-slicer
 go run cmd/pixel-slicer/main.go
 ```
 
@@ -56,18 +56,21 @@ pixel-slicer configuration is stored as YAML, and contains conversion rules for 
 <details>
   <summary>Sample Config</summary>
 
+Save the below as `config.yaml` and pass `--config config.yaml`:
+
 ```
 inputDir: sample-data/
 outputDir: output-media/
-moveProcessed: false
-watch: false
+moveProcessed: false     # Move files to another directory once processed
+processedDir: processed/
+watch: false             # Watch input directory for new files
 
-# Upload all generated media to S3-compatible storage
+# Upload all generated media to S3-compatible storage (when Enabled is set to true)
 S3:
-  Enabled: true
+  Enabled: false
   Endpoint: https://s3.us-west-000.backblazeb2.com
   Region: us-east-1
-  Bucket: pixel-slicer
+  Bucket: media
 
 # Convert images to JPG and WebP at a variety of sizes
 ImageConfigurations:
@@ -118,8 +121,10 @@ VideoConfigurations:
 
 YAML config files can be passed with `--config <file.yaml>`. All config file options can be overridden by command line flags.
 
-Useful configuration flags:
+Use `--help` to see a full list of configuration flags, but some useful flags are:
 
+* `--dir <directory>`: process media in the given directory
+* `--outputdir <directory>`: output resized and encoded media to the given directory
 * `--watch`: watch the input directory for new files
 * `--move-processed`: move processed files to a separate directory. Useful when used with `--watch`
 * See `--help` for a full list
