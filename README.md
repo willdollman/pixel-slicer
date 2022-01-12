@@ -36,11 +36,7 @@ brew install vips ffmpeg
 apt-get install libvips-dev ffmpeg
 ```
 
-Once installed, you can download the pre-built binaries:
-
-> TODO: Create pre-built binaries
-
-Alternatively, if you have Go installed you can download and build from source:
+Then with Go installed you can download and build from source:
 
 ```
 go install github.com/willdollman/pixel-slicer/cmd/...@latest
