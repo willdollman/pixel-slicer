@@ -18,9 +18,10 @@ It was written to allow high performance sites packed with media to be served on
 The easiest way to run pixel-slicer is via Docker, which includes all required media encoding libraries:
 
 ```
-git clone git@github.com:willdollman/pixel-slicer.git
-docker build -t px:latest .
-...
+docker pull ghcr.io/willdollman/pixel-slicer:master
+
+# Run pixel-slicer against a directory of media
+docker run -v ~/input-images:/input -v ~/output:/output ghcr.io/willdollman/pixel-slicer:master
 ```
 
 ### Downloading binaries and building from source
