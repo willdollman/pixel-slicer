@@ -56,6 +56,16 @@ func (s *S3Client) UploadFile(filename string, filekey string) error {
 		return errors.Wrapf(err, "Unable to open file '%s' for upload", filename)
 	}
 
+	// Print error if file is larger than a reasonable size
+	fi, err := f.Stat()
+	if err != nil {
+		return errors.Wrapf(err, "Unable to stat file %s", filename)
+	}
+	if fi.Size() > 50*1_000_000 {
+		fmt.Printf("  Uploading large file: %d MB\n", fi.Size()/1_000_000)
+	}
+	return nil
+
 	_, err = s.S3.PutObject(&s3.PutObjectInput{
 		Body:   f,
 		Bucket: aws.String(s.Config.Bucket),
