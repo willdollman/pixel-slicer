@@ -64,7 +64,6 @@ func (s *S3Client) UploadFile(filename string, filekey string) error {
 	if fi.Size() > 50*1_000_000 {
 		fmt.Printf("  Uploading large file: %d MB\n", fi.Size()/1_000_000)
 	}
-	return nil
 
 	_, err = s.S3.PutObject(&s3.PutObjectInput{
 		Body:   f,
