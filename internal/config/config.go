@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 
 	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 	"github.com/willdollman/pixel-slicer/internal/s3"
@@ -26,7 +27,7 @@ type ReadableConfig struct {
 	VideoConfigurations []*mediaprocessor.VideoConfiguration
 }
 
-func (c ReadableConfig) GetFSConfig() *mediaprocessor.FSConfig {
+func (c *ReadableConfig) GetFSConfig() *mediaprocessor.FSConfig {
 	return &mediaprocessor.FSConfig{
 		InputDir:      c.InputDir,
 		OutputDir:     c.OutputDir,
@@ -37,7 +38,7 @@ func (c ReadableConfig) GetFSConfig() *mediaprocessor.FSConfig {
 	}
 }
 
-func (c ReadableConfig) GetMediaConfig() *mediaprocessor.MediaConfig {
+func (c *ReadableConfig) GetMediaConfig() *mediaprocessor.MediaConfig {
 	return &mediaprocessor.MediaConfig{
 		ImageConfigurations: c.ImageConfigurations,
 		VideoConfigurations: c.VideoConfigurations,
@@ -45,7 +46,13 @@ func (c ReadableConfig) GetMediaConfig() *mediaprocessor.MediaConfig {
 }
 
 // ValidateConfig validates that a given config is valid
-func (c ReadableConfig) ValidateConfig() (err error) {
+func (c *ReadableConfig) ValidateConfig() (err error) {
+	// Strip trailing slashes from output dir
+	fmt.Printf("outputDir = %s\n", c.OutputDir)
+	re := regexp.MustCompile(`/$`)
+	c.OutputDir = re.ReplaceAllString(c.OutputDir, "")
+	fmt.Printf("outputDir = %s\n", c.OutputDir)
+
 	// Check that input dir and processed dir are not the same directory
 	inputDirFull, err := filepath.Abs(c.InputDir)
 	if err != nil {
