@@ -52,7 +52,7 @@ func main() {
 				viper.Set("Workers", workers)
 			}
 			if s3Enabled := c.Bool("enable-s3"); s3Enabled {
-				viper.Set("S3Enabled.Enabled", s3Enabled) // TODO: Does this work after changing ReadableConfig?
+				viper.Set("S3.Enabled", s3Enabled)
 			}
 
 			// Read config file
