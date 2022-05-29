@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"github.com/willdollman/pixel-slicer/internal/mediaprocessor"
 )
 
 func GetConfig(configPath string) (*ReadableConfig, error) {
@@ -21,8 +22,16 @@ func GetConfig(configPath string) (*ReadableConfig, error) {
 	viper.SetDefault("S3Enabled", false)
 	viper.SetDefault("S3", map[string]string{"Endoint": "", "Region": "", "Bucket": "pixelslicer"})
 	// Set default media configurations
-	viper.SetDefault("ImageConfiguration", []map[string]string{{"MaxWidth": "1000", "Quality": "80", "FileType": "jpg"}})
-	viper.SetDefault("VideoConfiguration", []map[string]string{{"MaxWidth": "600", "Quality": "23", "Preset": "ultrafast", "FileType": "mp4"}})
+	viper.SetDefault("ImageConfigurations", []*mediaprocessor.ImageConfiguration{
+		{MaxWidth: 500, Quality: 80, FileType: mediaprocessor.FileOutputType("jpg")},
+		{MaxWidth: 500, Quality: 80, FileType: mediaprocessor.FileOutputType("webp")},
+		{MaxWidth: 2000, Quality: 80, FileType: mediaprocessor.FileOutputType("jpg")},
+		{MaxWidth: 2000, Quality: 80, FileType: mediaprocessor.FileOutputType("webp")},
+	})
+	viper.SetDefault("VideoConfigurations", []*mediaprocessor.VideoConfiguration{
+		{MaxWidth: 480, Quality: 23, FileType: mediaprocessor.FileOutputType("mp4")},
+		{MaxWidth: 720, Quality: 23, FileType: mediaprocessor.FileOutputType("mp4")},
+	})
 
 	// Config location
 	if configPath != "" {
