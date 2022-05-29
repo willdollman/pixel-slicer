@@ -54,6 +54,8 @@ func (i *ImageVips) Resize(m *MediaJob) (filenames []string, err error) {
 		if err != nil {
 			log.Fatalf("Unable to write file")
 		}
+
+		filenames = append(filenames, outputFilepath)
 	}
 
 	return
