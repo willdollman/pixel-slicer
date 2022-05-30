@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
+	"github.com/willdollman/pixel-slicer/internal/pixelio"
 )
 
 // S3Client contains configuration and a client for an S3-compatible storage service
@@ -65,10 +66,13 @@ func (s *S3Client) UploadFile(filename string, filekey string) error {
 		fmt.Printf("  Uploading large file: %d MB\n", fi.Size()/1_000_000)
 	}
 
+	mimeType := pixelio.ExtensionMimeType(filename)
+
 	_, err = s.S3.PutObject(&s3.PutObjectInput{
-		Body:   f,
-		Bucket: aws.String(s.Config.Bucket),
-		Key:    key,
+		Body:        f,
+		Bucket:      aws.String(s.Config.Bucket),
+		Key:         key,
+		ContentType: &mimeType,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "Failed to upload data to %s/%s", s.Config.Bucket, filename)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -116,6 +117,20 @@ func GetMediaType(file *InputFile) (MediaType string) {
 	return mediaType
 }
 
+// ExtensionMimeType returns the mime time given a file's extension.
+// Uses the stdlib mime package
+func ExtensionMimeType(filename string) (mimeType string) {
+	fileExt := strings.ToLower(filepath.Ext(filename))
+
+	mimeType = mime.TypeByExtension(fileExt)
+	if mimeType == "" {
+		fmt.Printf("Unknown MIME type for extension %s\n", fileExt)
+		mimeType = "binary/octet-stream"
+	}
+
+	return mimeType
+}
+
 // FilterValidFiles returns all valid file types in the input
 func FilterValidFiles(files []*InputFile) (filteredFiles []*InputFile) {
 	for mediaType := range TypeExtension() {
@@ -206,7 +221,7 @@ func MoveOriginal(file *InputFile, moveDir string) (err error) {
 	}
 
 	movedFileName := filepath.Join(fullMoveDir, file.Filename)
-	fmt.Printf("Moving processed file %s to %s\n", file.Path, movedFileName)
+	// fmt.Printf("Moving processed file %s to %s\n", file.Path, movedFileName)
 
 	// Remove target output file if it already exists
 	if _, err := os.Stat(movedFileName); err == nil {
