@@ -1,6 +1,4 @@
-example-*/
-output/
-output*/
-processed/
+test-data/
+test-configs/
 
 vendor/
