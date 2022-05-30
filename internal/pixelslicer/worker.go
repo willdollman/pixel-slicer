@@ -1,7 +1,6 @@
 package pixelslicer
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -65,7 +64,7 @@ func jobPostProcess(job mediaprocessor.MediaJob, filenames []string) error {
 
 		// S3 upload
 		if job.S3Client.Config.Enabled {
-			fmt.Printf("Uploading to S3: %s\n", filekey)
+			// fmt.Printf("Uploading to S3: %s\n", filekey) // TODO: verbose
 			err := job.S3Client.UploadFile(filename, filekey)
 			if err != nil {
 				return errors.Wrap(err, "Unable to upload output files to S3")

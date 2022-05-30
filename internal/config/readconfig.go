@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"runtime"
 
@@ -35,7 +34,7 @@ func GetConfig(configPath string) (*ReadableConfig, error) {
 
 	// Config location
 	if configPath != "" {
-		fmt.Printf("Loading config from '%s'\n", configPath)
+		// fmt.Printf("Loading config from '%s'\n", configPath) // TODO: verbose
 		viper.SetConfigFile(configPath)
 	} else {
 		viper.SetConfigName("config")

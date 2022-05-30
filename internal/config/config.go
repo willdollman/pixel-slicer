@@ -50,10 +50,8 @@ func (c *ReadableConfig) GetMediaConfig() *mediaprocessor.MediaConfig {
 // ValidateConfig validates that a given config is valid
 func (c *ReadableConfig) ValidateConfig() (err error) {
 	// Strip trailing slashes from output dir
-	fmt.Printf("outputDir = %s\n", c.OutputDir)
 	re := regexp.MustCompile(`/$`)
 	c.OutputDir = re.ReplaceAllString(c.OutputDir, "")
-	fmt.Printf("outputDir = %s\n", c.OutputDir)
 
 	// Check that input dir and processed dir are not the same directory
 	inputDirFull, err := filepath.Abs(c.InputDir)

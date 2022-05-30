@@ -101,6 +101,19 @@ func main() {
 			vips.Startup(&vips.Config{})
 			defer vips.Shutdown()
 
+			// TODO: Tidy up
+			fmt.Printf("\n")
+			var s3UploadString, moveProcessedString = " ", " "
+			if p.S3Client.Config.Enabled {
+				s3UploadString = "✓"
+			}
+			fmt.Printf(" [ %s ] S3 Upload\n", s3UploadString)
+			if p.FSConfig.MoveProcessed {
+				moveProcessedString = "✓"
+			}
+			fmt.Printf(" [ %s ] Move Processed Files\n", moveProcessedString)
+			fmt.Printf("\n")
+
 			p.ProcessFiles(*conf)
 
 			return nil

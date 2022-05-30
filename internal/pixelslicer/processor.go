@@ -16,12 +16,11 @@ import (
 // It spawns a worker pool, and then calls filesystem-observing functions to queue jobs for those workers.
 // It then monitors the workers, and shuts down when required.
 func (p *PixelSlicer) ProcessFiles(conf config.ReadableConfig) {
-	fmt.Printf("Using %d threads\n", conf.Workers)
 	jobQueue := make(chan mediaprocessor.MediaJob, 2048)
 
 	// Always queue any files which are already in the directory
 	numInitialJobs := p.processOneShot(jobQueue) // TODO: multiply by number of render types?
-	fmt.Printf("\nProcessing %d jobs in initial directory...\n\n", numInitialJobs)
+	// fmt.Printf("\nProcessing %d jobs in initial directory...\n\n", numInitialJobs)
 	bar := progressbar.New(numInitialJobs)
 
 	errc := make(chan error)
@@ -119,8 +118,6 @@ func (p *PixelSlicer) processWatchDir(jobQueue chan<- mediaprocessor.MediaJob) {
 // processOneShot crawls a directory tree looking for files of the correct type. Any matching
 // files are added to the jobQueue.
 func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) int {
-	fmt.Println("Processing directory", p.FSConfig.InputDir)
-
 	files, err := pixelio.EnumerateDirContents(p.FSConfig.InputDir)
 	if err != nil {
 		log.Fatal("Cannot enumerate supplied directory", p.FSConfig.InputDir)
@@ -133,11 +130,10 @@ func (p *PixelSlicer) processOneShot(jobQueue chan<- mediaprocessor.MediaJob) in
 	for mediaType, _ := range pixelio.TypeExtension() {
 		mediaFiles[mediaType] = pixelio.FilterFileType(files, mediaType)
 	}
-	fmt.Printf("Found %d files, %d images, %d videos\n\n", len(files), len(mediaFiles["image"]), len(mediaFiles["video"]))
-	// log.Println("Will queue", len(filteredFiles), "jobs")
+	fmt.Printf("Found %d images and %d videos in '%s'\n\n", len(mediaFiles["image"]), len(mediaFiles["video"]), p.FSConfig.InputDir)
 
-	for i, file := range filteredFiles {
-		fmt.Printf("Queued '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles))
+	for _, file := range filteredFiles {
+		// fmt.Printf("Queued '%s' (%d/%d)\n", file.Filename, i+1, len(filteredFiles)) // TODO: verbose
 		// Multithreaded image processing
 		job := p.CreateJob(file)
 		jobQueue <- job
