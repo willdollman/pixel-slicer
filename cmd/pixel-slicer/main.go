@@ -30,6 +30,7 @@ func main() {
 			&cli.BoolFlag{Name: "watch", Usage: "Watch the input directory for new files"},
 			&cli.IntFlag{Name: "workers", Usage: "Number of workers to use for meda processing"},
 			&cli.BoolFlag{Name: "debug-filenames", Usage: "Include encoder debug information in generated filenames"},
+			&cli.BoolFlag{Name: "dry-run", Usage: "Disable move-processed and S3 uploads"},
 		},
 		Action: func(c *cli.Context) error {
 			// Pass cli params to Viper
@@ -55,6 +56,11 @@ func main() {
 			if s3Enabled := c.Bool("enable-s3"); s3Enabled {
 			if debugFilenames := c.Bool("debug-filenames"); debugFilenames {
 				viper.Set("DebugFilenames", debugFilenames)
+			}
+			// MUST come last, to override MoveProcessed and S3Enabled flags
+			if dryRun := c.Bool("dry-run"); dryRun {
+				viper.Set("MoveProcessed", false)
+				viper.Set("S3.Enabled", false)
 			}
 
 			// Read config file
