@@ -48,7 +48,11 @@ type MediaJob struct {
 // OutputPath returns the full output path for a MediaJob with a specific MediaConfiguration
 // e.g. output/subdir1/sunset-x100.jpg
 func (m *MediaJob) OutputPath(mediaConfiguration MediaConfiguration) string {
-	return pixelio.GetFileOutputPath(m.FSConfig.OutputDir, m.InputFile, mediaConfiguration.OutputFileSuffix(false))
+	return pixelio.GetFileOutputPath(
+		m.FSConfig.OutputDir,
+		m.InputFile,
+		mediaConfiguration.OutputFileSuffix(m.FSConfig.DebugFilenames),
+	)
 }
 
 // CheckOutputDir ensures that a job's output subdirectory exists

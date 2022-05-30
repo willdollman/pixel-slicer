@@ -4,12 +4,13 @@ import "fmt"
 
 // FSConfig contains the filesystem-related parameters used when processing media
 type FSConfig struct {
-	InputDir      string
-	OutputDir     string
-	MoveProcessed bool
-	ProcessedDir  string
-	Watch         bool
-	Workers       int
+	InputDir       string
+	OutputDir      string
+	MoveProcessed  bool
+	ProcessedDir   string
+	Watch          bool
+	Workers        int
+	DebugFilenames bool
 }
 
 // MediaConfig contains the image and video output parameters used when encoding media
@@ -49,13 +50,15 @@ func (i *ImageConfiguration) Validate() error {
 	return nil
 }
 
-func (i *ImageConfiguration) OutputFileSuffix(simpleName bool) string {
-	if simpleName {
-		return fmt.Sprintf("-%d.%s", i.MaxWidth, string(i.FileType))
+func (i *ImageConfiguration) OutputFileSuffix(debugFilename bool) string {
+	if debugFilename {
+		return fmt.Sprintf(
+			"-%d-q%d.%s",
+			i.MaxWidth, i.Quality, string(i.FileType),
+		)
 	}
 
 	return fmt.Sprintf("x%d.%s", i.MaxWidth, string(i.FileType))
-	// return fmt.Sprintf("-%d-q%d.%s", i.MaxWidth, i.Quality, string(i.FileType))
 }
 
 // VideoConfiguration describes output size, quality, format, and other information for an encoded
@@ -113,15 +116,18 @@ func (v *VideoConfiguration) Validate() error {
 	return nil
 }
 
-func (v *VideoConfiguration) OutputFileSuffix(simpleName bool) string {
+func (v *VideoConfiguration) OutputFileSuffix(debugFilename bool) string {
 	if v.FileType.GetMediaType() == Image {
 		return fmt.Sprintf(".%s", v.FileType)
 	}
 
-	if simpleName {
-		return fmt.Sprintf("-%d.%s", v.MaxWidth, string(v.FileType))
+	if debugFilename {
+		return fmt.Sprintf(
+			"-%d-q%d-p%s.%s.%s",
+			v.MaxWidth, v.Quality, v.Preset, v.Codec, v.FileType,
+		)
 	}
-	return fmt.Sprintf("-%d-q%d-p%s.%s.%s", v.MaxWidth, v.Quality, v.Preset, v.Codec, v.FileType)
+	return fmt.Sprintf("-%d.%s", v.MaxWidth, string(v.FileType))
 }
 
 // FileOutputType is the file extension of the output media file.

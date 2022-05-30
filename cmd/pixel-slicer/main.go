@@ -29,6 +29,7 @@ func main() {
 			&cli.BoolFlag{Name: "print-config", Usage: "Print the current configuration and exit"},
 			&cli.BoolFlag{Name: "watch", Usage: "Watch the input directory for new files"},
 			&cli.IntFlag{Name: "workers", Usage: "Number of workers to use for meda processing"},
+			&cli.BoolFlag{Name: "debug-filenames", Usage: "Include encoder debug information in generated filenames"},
 		},
 		Action: func(c *cli.Context) error {
 			// Pass cli params to Viper
@@ -52,7 +53,8 @@ func main() {
 				viper.Set("Workers", workers)
 			}
 			if s3Enabled := c.Bool("enable-s3"); s3Enabled {
-				viper.Set("S3.Enabled", s3Enabled)
+			if debugFilenames := c.Bool("debug-filenames"); debugFilenames {
+				viper.Set("DebugFilenames", debugFilenames)
 			}
 
 			// Read config file
